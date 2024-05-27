@@ -19,8 +19,10 @@ def __():
 def __(mo):
     mo.md(
         r"""
-        # The very basics of language models
+        # Small language models
 
+        ## Happy birthday
+        ---
         To get started, we analyze lyrics of perhaps the most popular song in the world.
         You may be familiar with the lyrics:
         """
@@ -200,12 +202,8 @@ def __(
 def __(mo):
     mo.md(
         rf"""
+        ## Blowin' in the wind
         ---
-
-
-
-
-        # More context
 
         The previous looked only one word at the time. However, we can easily use more than one word to predict the next one. How many words (or tokens) we use to predict the next one, is known as the **context length**. The context length of the previous example was 1.
 
@@ -280,23 +278,32 @@ def __(mo):
 
 
 @app.cell
-def __(blowin_words, defaultdict, python_out):
+def __(mo):
+    context_length_slider = mo.ui.slider(start=1, stop=5, label="Context length", full_width=True)
+    context_length_slider
+    return context_length_slider,
+
+
+@app.cell
+def __(blowin_words, context_length_slider, defaultdict):
+    #blowin_context_length = 2
+    blowin_context_length = context_length_slider.value
     # Doing this more succintly now
     def get_ngrams(tokens, n):
         for i in range(len(tokens) - n + 1):
             yield tokens[i:i+n]
 
     blowin_next_words1 = defaultdict(list) 
-    for _word, _next_word in get_ngrams(blowin_words, 2):
-        blowin_next_words1[_word].append(_next_word)
+    for *_context, _next_word in get_ngrams(blowin_words, blowin_context_length + 1):
+        blowin_next_words1[tuple(_context)].append(_next_word)
 
-    python_out(dict(blowin_next_words1))
-    return blowin_next_words1, get_ngrams
+    #python_out(dict(blowin_next_words1))
+    return blowin_context_length, blowin_next_words1, get_ngrams
 
 
 @app.cell
-def __(blowin_next_words1, plot_follower_graph):
-    plot_follower_graph(blowin_next_words1)
+def __():
+    #plot_follower_graph(blowin_next_words1)
     return
 
 
@@ -315,7 +322,7 @@ def __():
 
 @app.cell
 def __(mo):
-    regen_blowin1_btn = mo.ui.button(label="Generate new lyrics")
+    regen_blowin1_btn = mo.ui.button(label="Generate new verse")
     regen_blowin1_btn
     return regen_blowin1_btn,
 
@@ -326,14 +333,15 @@ def genblow1_1(blowin_next_words1, random, regen_blowin1_btn):
 
     def _generate(next_words):
         context = next(iter(next_words.keys()))
-        yield context
+        yield from context
 
         while True:
             choices = next_words[context]
+            if not choices: return
             next_word = random.choice(choices)
             if next_word == '\n\n': return
             yield next_word
-            context = next_word
+            context = (*context[1:], next_word)
 
     _generated = list(_generate(blowin_next_words1))
     ' '.join(_generated)
@@ -353,26 +361,47 @@ def __(mo):
 
 
 @app.cell
-def __(blowin_words, mo):
-    initial_lyrics_blowin = blowin_words[:2]
+def __(blowin_context_length, blowin_words, mo):
+    initial_lyrics_blowin = blowin_words[:blowin_context_length + 1]
     get_lyrics_blowin1, set_lyrics_blowin1 = mo.state(initial_lyrics_blowin, allow_self_loops=True)
     return get_lyrics_blowin1, initial_lyrics_blowin, set_lyrics_blowin1
 
 
 @app.cell
 def __(
+    blowin_context_length,
     blowin_next_words1,
-    dropdown_generate,
     get_lyrics_blowin1,
     initial_lyrics_blowin,
     mo,
     set_lyrics_blowin1,
 ):
-    dropdown_blowin1, reset_blowin1 = dropdown_generate(blowin_next_words1, (get_lyrics_blowin1, set_lyrics_blowin1), initial_lyrics_blowin)
-    _lyrics_el = mo.Html(f"<pre>{repr(get_lyrics_blowin1()[-1])} {dropdown_blowin1}</pre>")
+    def dropdown_generate_blowin(next_words, lyrics_state, initial_lyrics):
+        get_lyrics, set_lyrics = lyrics_state
+        lyrics = get_lyrics()
+        context = tuple(lyrics[-blowin_context_length:])
+        options = set(next_words[context])
+        def update(value):
+            new_lyrics = (*get_lyrics(), value)
+            set_lyrics((*get_lyrics(), value))
+
+        lyrics_text = ' ' + ' '.join(get_lyrics())
+        optvals = {repr(o): o for o in options}
+        dropdown = mo.ui.dropdown(options=optvals, on_change=update)
+        reset = mo.ui.button(
+            label="Reset lyrics",
+            on_change=lambda *args: set_lyrics(initial_lyrics)
+        )
+
+        #lyrics_el = mo.Html(f"<pre>{lyrics_text} {dropdown}</pre>")
+        return dropdown, reset
+
+    dropdown_blowin1, reset_blowin1 = dropdown_generate_blowin(blowin_next_words1, (get_lyrics_blowin1, set_lyrics_blowin1), initial_lyrics_blowin)
+    _ctx = ', '.join(map(repr, get_lyrics_blowin1()[-blowin_context_length:]))
+    _lyrics_el = mo.Html(f"<pre>{_ctx} {dropdown_blowin1}</pre>")
 
     _lyrics_el
-    return dropdown_blowin1, reset_blowin1
+    return dropdown_blowin1, dropdown_generate_blowin, reset_blowin1
 
 
 @app.cell
@@ -380,6 +409,12 @@ def __(get_lyrics_blowin1, mo, reset_blowin1):
     _lyrics = ' '.join(get_lyrics_blowin1())
     _spoiler = mo.accordion({'SPOILER': mo.Html(f"<pre>{_lyrics}</pre>")})
     mo.hstack([_spoiler, reset_blowin1])
+    return
+
+
+@app.cell
+def __(mo):
+    mo.md(rf"")
     return
 
 
