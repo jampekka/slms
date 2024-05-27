@@ -358,10 +358,18 @@ def __(
     set_lyrics_blowin1,
 ):
     dropdown_blowin1, reset_blowin1 = dropdown_generate(blowin_next_words1, (get_lyrics_blowin1, set_lyrics_blowin1), initial_lyrics_blowin)
-    _lyrics_el = mo.Html(f"<pre>{' '.join(get_lyrics_blowin1())} {dropdown_blowin1}</pre>")
+    _lyrics_el = mo.Html(f"<pre>{repr(get_lyrics_blowin1()[-1])} {dropdown_blowin1}</pre>")
 
-    mo.hstack([_lyrics_el, reset_blowin1])
+    _lyrics_el
     return dropdown_blowin1, reset_blowin1
+
+
+@app.cell
+def __(get_lyrics_blowin1, mo, reset_blowin1):
+    _lyrics = ' '.join(get_lyrics_blowin1())
+    _spoiler = mo.accordion({'SPOILER': mo.Html(f"<pre>{_lyrics}</pre>")})
+    mo.hstack([_spoiler, reset_blowin1])
+    return
 
 
 if __name__ == "__main__":
