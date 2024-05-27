@@ -149,40 +149,53 @@ def __(mo):
 
 @app.cell
 def __(corpus_words, mo):
-    initial_lyrics = tuple(corpus_words[:2])
-    get_lyrics, set_lyrics = mo.state(initial_lyrics, allow_self_loops=True)
-    return get_lyrics, initial_lyrics, set_lyrics
+    initial_lyrics_birthday = tuple(corpus_words[:2])
+    get_lyrics_birthday, set_lyrics_birthday = mo.state(initial_lyrics_birthday, allow_self_loops=True)
+    return get_lyrics_birthday, initial_lyrics_birthday, set_lyrics_birthday
 
 
 @app.cell
-def __(get_lyrics, initial_lyrics, mo, next_words, set_lyrics):
-    lyrics = get_lyrics()
-    options = set(next_words[lyrics[-1]])
-    def update(value):
-        new_lyrics = (*get_lyrics(), value)
-        set_lyrics((*get_lyrics(), value))
+def __(mo):
+    def dropdown_generate(next_words, lyrics_state, initial_lyrics):
+        get_lyrics, set_lyrics = lyrics_state
+        lyrics = get_lyrics()
+        options = set(next_words[lyrics[-1]])
+        def update(value):
+            new_lyrics = (*get_lyrics(), value)
+            set_lyrics((*get_lyrics(), value))
+        
+        lyrics_text = ' ' + ' '.join(get_lyrics())
+        optvals = {repr(o): o for o in options}
+        dropdown = mo.ui.dropdown(options=optvals, on_change=update)
+        reset = mo.ui.button(
+            label="Reset lyrics",
+            on_change=lambda *args: set_lyrics(initial_lyrics)
+        )
+        
+        #lyrics_el = mo.Html(f"<pre>{lyrics_text} {dropdown}</pre>")
+        return dropdown, reset
 
-    lyrics_text = ' ' + ' '.join(get_lyrics())
-    optvals = {repr(o): o for o in options}
-    dropdown = mo.ui.dropdown(options=optvals, on_change=update)
-    reset = mo.ui.button(
-        label="Reset lyrics",
-        on_change=lambda *args: set_lyrics(initial_lyrics)
-    )
 
-    lyrics_el = mo.Html(f"<pre>{lyrics_text} {dropdown}</pre>")
+    return dropdown_generate,
 
-    mo.hstack([lyrics_el, reset])
-    return (
-        dropdown,
-        lyrics,
-        lyrics_el,
-        lyrics_text,
-        options,
-        optvals,
-        reset,
-        update,
-    )
+
+@app.cell
+def __(
+    dropdown_generate,
+    get_lyrics_birthday,
+    initial_lyrics_birthday,
+    mo,
+    next_words,
+    set_lyrics_birthday,
+):
+    # These have to be globals for the events to be triggered.
+    # Marimo has some ways to go to enable modular code
+    dropdown_birthday, reset_birthday = dropdown_generate(next_words, (get_lyrics_birthday, set_lyrics_birthday), initial_lyrics_birthday)
+    _text = ' '.join(get_lyrics_birthday())
+    _lyrics_el = mo.Html(f"<pre>{_text} {dropdown_birthday}</pre>")
+
+    mo.hstack([_lyrics_el, reset_birthday])
+    return dropdown_birthday, reset_birthday
 
 
 @app.cell
@@ -318,13 +331,37 @@ def __(blowin_next_words1):
 
 @app.cell
 def __(mo):
-    mo.md(rf"Don't seem to make much sense. But remember that this has to guess the next word just based on the previous one. Try it out yourself below:")
+    mo.md(
+        rf"""
+        Don't seem to make much sense. But remember that this has to guess the next word just based on the previous one.
+
+        Try it out yourself! This time the generated lyrics are hidden. Don't peek at them before you're done, and pretend you don't remember what you picked before!
+        """
+    )
     return
 
 
 @app.cell
-def __():
-    return
+def __(blowin_words, mo):
+    initial_lyrics_blowin = blowin_words[:2]
+    get_lyrics_blowin1, set_lyrics_blowin1 = mo.state(initial_lyrics_blowin, allow_self_loops=True)
+    return get_lyrics_blowin1, initial_lyrics_blowin, set_lyrics_blowin1
+
+
+@app.cell
+def __(
+    blowin_next_words1,
+    dropdown_generate,
+    get_lyrics_blowin1,
+    initial_lyrics_blowin,
+    mo,
+    set_lyrics_blowin1,
+):
+    dropdown_blowin1, reset_blowin1 = dropdown_generate(blowin_next_words1, (get_lyrics_blowin1, set_lyrics_blowin1), initial_lyrics_blowin)
+    _lyrics_el = mo.Html(f"<pre>{' '.join(get_lyrics_blowin1())} {dropdown_blowin1}</pre>")
+
+    mo.hstack([_lyrics_el, reset_blowin1])
+    return dropdown_blowin1, reset_blowin1
 
 
 if __name__ == "__main__":
