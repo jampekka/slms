@@ -8,9 +8,11 @@ app = marimo.App(app_title="SLMs basics")
 def __():
     import marimo as mo
     from pprint import pformat
+    from collections import defaultdict
     def python_out(code):
-        return mo.md("```" + repr(code) + "```")
-    return mo, pformat, python_out
+        #return code
+        return mo.Html("<pre>" + pformat(code, sort_dicts=False, compact=True) + "</pre>")
+    return defaultdict, mo, pformat, python_out
 
 
 @app.cell
@@ -51,20 +53,40 @@ def __(mo):
 
 
 @app.cell
-def __(corpus_text):
+def __(corpus_text, python_out):
     corpus_words = corpus_text.split(' ')
-    corpus_words
+    python_out(corpus_words)
     return corpus_words,
 
 
 @app.cell
 def __(mo):
     mo.md(
-        r"""
+        rf"""
         (The here `'\n'` means that we start a new line. While not really a word, we treat it as such for now.)
 
-        The currently popular large language models (LLMs) are based on predicting what token becomes after
-        some number of tokens. For example, the word `'Happy'` is followerd by the word `'birthday'` and the
+        We can also build our **vocabulary**, which is just all individual words that is in our lyrics:
+        """
+    )
+    return
+
+
+@app.cell
+def __(corpus_words, python_out):
+    # Using dict instead of set to keep the order
+    _vocabulary = {w: None for w in corpus_words}.keys()
+    python_out(list(_vocabulary))
+    return
+
+
+@app.cell
+def __(mo):
+    mo.md(
+        r"""
+        The currently popular large language models (LLMs) -- such as GPT, Llama and Mistral -- are based on predicting what token becomes after
+        some number of tokens.
+
+        In our case, for example, the word `'Happy'` is followerd by the word `'birthday'` and the
         word `'birthday'` is followed by the word `'to'`.
 
         In fact, to make an extremely simple language model, we can just list what words are followed by each
@@ -97,10 +119,17 @@ def __(mo):
 def __(next_words):
     import networkx as nx
     import matplotlib.pyplot as plt
-    graph = nx.from_dict_of_lists(next_words, create_using=nx.DiGraph)
-    nx.draw_circular(graph, arrows=True, with_labels=True)
-    plt.gca()
-    return graph, nx, plt
+
+    def plot_follower_graph(next_words):
+        # TODO: This is fugly. Use dot
+        next_words = {repr(k): list(map(repr, v)) for k, v in next_words.items()}
+        graph = nx.from_dict_of_lists(next_words, create_using=nx.DiGraph)
+        #nx.draw_pydot(graph)
+        nx.draw(graph, arrows=True, with_labels=True)
+        return plt.gca()
+
+    plot_follower_graph(next_words)
+    return nx, plot_follower_graph, plt
 
 
 @app.cell
@@ -134,7 +163,6 @@ def __(get_lyrics, initial_lyrics, mo, next_words, set_lyrics):
         set_lyrics((*get_lyrics(), value))
 
     lyrics_text = ' ' + ' '.join(get_lyrics())
-
     optvals = {repr(o): o for o in options}
     dropdown = mo.ui.dropdown(options=optvals, on_change=update)
     reset = mo.ui.button(
@@ -155,6 +183,148 @@ def __(get_lyrics, initial_lyrics, mo, next_words, set_lyrics):
         reset,
         update,
     )
+
+
+@app.cell
+def __(mo):
+    mo.md(
+        rf"""
+        ---
+
+
+
+
+        # More context
+
+        The previous looked only one word at the time. However, we can easily use more than one word to predict the next one. How many words (or tokens) we use to predict the next one, is known as the **context length**. The context length of the previous example was 1.
+
+        With the very simple lyrics context length more than 1 does not make much sense, so let's pick something a bit more complicated:
+        """
+    )
+    return
+
+
+@app.cell
+def __():
+    blowin_text = """
+     Yes, and how many roads must a man walk down, before you call him a man? 
+     And how many seas must a white dove sail, before she sleeps in the sand? 
+     Yes, and how many times must the cannonballs fly, before they're forever banned? 
+
+     Yes, and how many years must a mountain exist, before it is washed to the sea? 
+     And how many years can some people exist, before they're allowed to be free? 
+     Yes, and how many times can a man turn his head, and pretend that he just doesn't see? 
+
+     Yes, and how many times must a man look up, before he can see the sky? 
+     And how many ears must one man have, before he can hear people cry? 
+     Yes, and how many deaths will it take 'til he knows, that too many people have died? 
+    """
+    blowin_text
+    return blowin_text,
+
+
+@app.cell
+def __(mo):
+    mo.md(
+        rf"""
+        You may recognize the lyrics. They're the verses of the Bob Dylan's [Blowin' in the Wind](https://www.youtube.com/watch?v=MMFj8uDubsE).
+
+        We proceed like before, first splitting the lyrics into words:
+        """
+    )
+    return
+
+
+@app.cell
+def __(blowin_text, python_out):
+    blowin_words = blowin_text.split(' ')
+    python_out(blowin_words)
+    return blowin_words,
+
+
+@app.cell
+def __(mo):
+    mo.md(
+        rf"""
+        Note that we now have punctuation included in the ''words'', like the comma in `'Yes,'` the question mark in `'man?'`. We also treat two newlines `'\n\n'` as one ''word''. This comes handy, as it separates the verses.
+
+        We now have quite a bit larger vocabulary:
+        """
+    )
+    return
+
+
+@app.cell
+def __(blowin_words, python_out):
+    # Using dict instead of set to keep the order
+    _vocabulary = {w: None for w in blowin_words}.keys()
+    python_out(list(_vocabulary))
+    return
+
+
+@app.cell
+def __(mo):
+    mo.md(rf"Let's first do the same simple context length 1 model for the new lyrics:")
+    return
+
+
+@app.cell
+def __(blowin_words, defaultdict, python_out):
+    # Doing this more succintly now
+    def get_ngrams(tokens, n):
+        for i in range(len(tokens) - n + 1):
+            yield tokens[i:i+n]
+
+    blowin_next_words1 = defaultdict(list) 
+    for _word, _next_word in get_ngrams(blowin_words, 2):
+        blowin_next_words1[_word].append(_next_word)
+
+    python_out(dict(blowin_next_words1))
+    return blowin_next_words1, get_ngrams
+
+
+@app.cell
+def __(blowin_next_words1, plot_follower_graph):
+    plot_follower_graph(blowin_next_words1)
+    return
+
+
+@app.cell
+def __(mo):
+    mo.md(rf"We can now generate some lyrics with the model. Here's some machine generated ones, you can do your own below.")
+    return
+
+
+@app.cell
+def __(blowin_next_words1):
+    import random
+    random.seed(3)
+
+    def _generate(next_words):
+        context = next(iter(next_words.keys()))
+        yield context
+
+        while True:
+            choices = next_words[context]
+            next_word = random.choice(choices)
+            if next_word == '\n\n': return
+            yield next_word
+            context = next_word
+
+    _generated = list(_generate(blowin_next_words1))
+    ' '.join(_generated)
+    return random,
+
+
+@app.cell
+def __(mo):
+    mo.md(rf"Don't seem to make much sense. But remember that this has to guess the next word just based on the previous one. Try it out yourself below:")
+    return
+
+
+@app.cell
+def __():
+    return
 
 
 if __name__ == "__main__":
