@@ -163,7 +163,7 @@ def __(mo):
         def update(value):
             new_lyrics = (*get_lyrics(), value)
             set_lyrics((*get_lyrics(), value))
-        
+
         lyrics_text = ' ' + ' '.join(get_lyrics())
         optvals = {repr(o): o for o in options}
         dropdown = mo.ui.dropdown(options=optvals, on_change=update)
@@ -171,11 +171,9 @@ def __(mo):
             label="Reset lyrics",
             on_change=lambda *args: set_lyrics(initial_lyrics)
         )
-        
+
         #lyrics_el = mo.Html(f"<pre>{lyrics_text} {dropdown}</pre>")
         return dropdown, reset
-
-
     return dropdown_generate,
 
 
@@ -309,9 +307,22 @@ def __(mo):
 
 
 @app.cell
-def __(blowin_next_words1):
+def __():
     import random
     random.seed(3)
+    return random,
+
+
+@app.cell
+def __(mo):
+    regen_blowin1_btn = mo.ui.button(label="Generate new lyrics")
+    regen_blowin1_btn
+    return regen_blowin1_btn,
+
+
+@app.cell
+def genblow1_1(blowin_next_words1, random, regen_blowin1_btn):
+    regen_blowin1_btn
 
     def _generate(next_words):
         context = next(iter(next_words.keys()))
@@ -326,7 +337,7 @@ def __(blowin_next_words1):
 
     _generated = list(_generate(blowin_next_words1))
     ' '.join(_generated)
-    return random,
+    return
 
 
 @app.cell
