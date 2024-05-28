@@ -266,7 +266,7 @@ def __(mo):
         ---
         We build a simple language model again with these lyrics. These simple models are usually called ''Markov Chain text generators''. This is a bit misleading, as even the next-token-predicting LLMs are Markov chains. We won't discuss what Markov chains really are and what makes a model such, but Wikipedia has a [rather good article](https://en.wikipedia.org/wiki/Markov_chain) of these if you're interested. 
 
-        The previously in the ''Happy Birthday'' example the model looked only one word at the time. However, we can easily use more than one word to predict the next one. How many words (or tokens) we use to predict the next one, is known as the **context length**. The context length of the previous example was 1.
+        Previously in the ''Happy Birthday'' example the model looked only one word at the time. However, we can easily use more than one word to predict the next one. How many words (or tokens) we use to predict the next one, is known as the **context length**. The context length of the previous example was 1.
 
         For lyrics as simple as in ''Happy Birthday'' using a context length more than 1 didn't make much sense. However, with the more complicated lyrics we can see how the model behavior changes with different context lengths.
 
@@ -334,7 +334,7 @@ def __(mo):
 
 
 @app.cell
-def genblow1_1(blowin_next_words1, pre_box, random, regen_blowin1_btn):
+def genblow1_1(U, blowin_next_words1, random, regen_blowin1_btn):
     # TODO: Keep the seed constant across generations
 
     regen_blowin1_btn
@@ -352,15 +352,15 @@ def genblow1_1(blowin_next_words1, pre_box, random, regen_blowin1_btn):
             context = (*context[1:], next_word)
 
     _generated = list(_generate(blowin_next_words1))
-    pre_box(' '.join(_generated))
+    U.pre_box(' '.join(_generated))
     return
 
 
 @app.cell
-def __(blowin_next_words1, mo, plot_follower_graph, python_out):
+def __(U, blowin_next_words1, mo):
     mo.accordion({
-        "Next word table": python_out(dict(blowin_next_words1)),
-        "Next word graph": plot_follower_graph(blowin_next_words1)
+        "Next word table": U.python_out(dict(blowin_next_words1)),
+        "Next word graph": U.plot_follower_graph(blowin_next_words1)
     })
     return
 
