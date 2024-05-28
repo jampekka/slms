@@ -25,7 +25,7 @@ def __(mo):
         ---
         In the [previous notebook](?file=basics.py) we split the text roughly to words. But the models don't care about what the pieces of text are, and we can split them any way we want. In this notebook we can try out different tokenizations and see how they affect the model's behavior.
 
-        Now the text will separate tokens with different colors, so they can be distinguished easier. We also print out the newline characters and show spaces as underlined.
+        Now the text will separate tokens with alternate colored backgrounds, so they can be distinguished easier. We also print out the newline characters and show spaces as underlined.
 
         Last time we also did a trick where spaces `' '` were not tokens. In the following we'll treat them as separate tokens too.
 
@@ -36,7 +36,7 @@ def __(mo):
 
 
 @app.cell
-def __(mo):
+def __(U, mo):
     class Tokenizer:
         def tokens_to_strings(self, tokens):
             return map(self.token_to_string, tokens)
@@ -68,11 +68,33 @@ def __(mo):
         def __call__(self, s):
             return list(s)
 
+    import transformers
+
+    #_BASE_MODEL="EleutherAI/pythia-14m"
+    _BASE_MODEL="facebook/opt-125m"
+    class SubwordTokenizer(Tokenizer):
+        def __init__(self):
+            self._tok = transformers.AutoTokenizer.from_pretrained(_BASE_MODEL)
+        
+        def __call__(self, s):
+            # Using strings instead of ids to avoid confusion
+            token_ids = self._tok(s)['input_ids']
+            return [self._tok.decode([id]) for id in token_ids]
+
 
     tokenizers = {
         "Word": WordTokenizer(),
-        "Character": CharacterTokenizer()
+        "Character": CharacterTokenizer(),
+        "Subword": SubwordTokenizer(),
     }
+
+    languages = {
+        "English": U.blowin_text,
+        "Finnish": U.blowin_text_finnish,
+        "German": U.blowin_text_german,
+    }
+
+    language_selector = mo.ui.dropdown(options=languages, value="English", allow_select_none=False)
 
     tokenizer_texts = {
         "Word tokenizer": mo.md("""
@@ -84,8 +106,14 @@ def __(mo):
         The character tokenizer splits the text into individual characters. With this we can create new words, but especially with shorter context length, it produces total gibberish!
 
         A tradeoff between word tokenization and character tokenization is **subword tokenization**. Here common strings, like English words and Finnish inflections, are typically represented as a single token, but the tokenization also includes individual characters.
-        """)
-        
+        """),
+        "Subword tokenizer": mo.md(f"""
+        Subword tokenizer tries to split the text to commonly occuring strings, such as words, but it can "fall back" to smaller strings, including single characters. Typically most common English words are individual tokens. Also subwords like Finnish inflections or syllables may get their own tokens.
+
+        A common method for subword tokenization is [Byte Pair Encoding](https://en.wikipedia.org/wiki/Byte_pair_encoding). The tokenizer in this examples uses that method, and is in fact the same tokenizer that was used for GPT-2.
+
+        You may notice that for English the resulting tokenization is almost exactly the same as with word tokenization, with the difference that spaces are included in the tokens. However, see what happens if you do a Finnish or German translation of the lyrics: {language_selector}
+        """),
     }
 
     context_length_slider = mo.ui.slider(start=1, value = 2, stop=10, full_width=False, label="Context length", show_value=True)
@@ -100,21 +128,33 @@ def __(mo):
     return (
         CharacterTokenizer,
         HackyWordTokenizer,
+        SubwordTokenizer,
         Tokenizer,
         WordTokenizer,
         context_length_slider,
+        language_selector,
+        languages,
         random_seed_slider,
         re,
         tokenizer_selector,
         tokenizer_tabs,
         tokenizer_texts,
         tokenizers,
+        transformers,
     )
 
 
 @app.cell
-def __(U, context_length_slider, tokenizer_tabs, tokenizers):
-    corpus_text = U.blowin_text
+def __(
+    U,
+    context_length_slider,
+    language_selector,
+    tokenizer_tabs,
+    tokenizers,
+):
+
+
+    corpus_text = language_selector.value
 
     tokenizer_type = tokenizer_tabs.value.split()[0]
     tokenizer = tokenizers[tokenizer_type]
@@ -149,8 +189,9 @@ def __(mo, tokenizer_tabs):
         f"""
         ## Tokenizer selection
         ---
-
+        <div style="height: 20em; overflow: auto;">
         {tokenizer_tabs}
+        </div>
         """
     )
     return
@@ -187,6 +228,23 @@ def __(U, corpus_tokens, mo, next_tokens, random_seed_slider, tokenizer):
         #"Next token table": U.python_out(dict(next_tokens)),
     })
     return gen_seed, gen_tokens, gen_ui
+
+
+@app.cell
+def __(language_selector, mo):
+    mo.md(
+        rf"""
+        Lyrics language {language_selector}
+
+        (Translation by Google Translate)
+        """
+    )
+    return
+
+
+@app.cell
+def __():
+    return
 
 
 if __name__ == "__main__":

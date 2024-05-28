@@ -30,6 +30,8 @@ def tokens_out(tokens, tokenizer):
                 "#00749e",
                 "#dc3e42",
         ]
+        #colors = "#d1f0fa", "#ffcdce"
+        colors = "var(--sky-3)", "var(--red-3)", "var(--amber-3)"
         color = colors[i%len(colors)]
         # TODO: Be more general!
         if string == ' ':
@@ -41,7 +43,7 @@ def tokens_out(tokens, tokenizer):
         string = string.replace("\n", "\\n")
         string += "\n"*n_newlines
 
-        out += f'<span style="color: {color}; text-decoration: {decoration}">{string}</span>'
+        out += f'<span style="background-color: {color}; text-decoration: {decoration}">{string}</span>'
     
     return pre_box(out)
 
@@ -172,3 +174,30 @@ And how many ears must one man have, before he can hear people cry?
 Yes, and how many deaths will it take 'til he knows, that too many people have died? 
 """
 
+blowin_text_finnish = """
+Niin, ja kuinka monta tietä miehen täytyy kävellä, ennen kuin kutsut häntä mieheksi?
+Ja kuinka monta merta valkoisen kyyhkysen täytyy purjehtia, ennen kuin se nukkuu hiekkaan?
+Kyllä, ja kuinka monta kertaa kanuunankuulat täytyy lentää, ennen kuin ne on ikuisesti kielletty?
+
+Kyllä, ja kuinka monta vuotta vuoren on oltava olemassa, ennen kuin se huuhtoutuu mereen?
+Ja kuinka monta vuotta jotkut ihmiset voivat olla olemassa ennen kuin he saavat olla vapaita?
+Kyllä, ja kuinka monta kertaa ihminen voi kääntää päätään ja teeskennellä, ettei hän vain näe?
+
+Kyllä, ja kuinka monta kertaa miehen täytyy katsoa ylös, ennen kuin hän voi nähdä taivaan?
+Ja kuinka monta korvaa yhdellä ihmisellä pitää olla, ennen kuin hän voi kuulla ihmisten itkevän?
+Kyllä, ja kuinka monta kuolemaa kestää, ennen kuin hän tietää, että liian monta ihmistä on kuollut?
+"""
+
+blowin_text_german = """
+Ja, und wie viele Wege muss ein Mann gehen, bevor man ihn einen Mann nennt?
+Und wie viele Meere muss eine weiße Taube durchsegeln, bevor sie im Sand schläft?
+Ja, und wie oft müssen die Kanonenkugeln fliegen, bevor sie für immer verboten werden?
+
+Ja, und wie viele Jahre muss ein Berg existieren, bevor er ins Meer gespült wird?
+Und wie viele Jahre können manche Menschen existieren, bevor sie frei sein dürfen?
+Ja, und wie oft kann ein Mann den Kopf drehen und so tun, als würde er einfach nichts sehen?
+
+Ja, und wie oft muss ein Mensch nach oben schauen, bevor er den Himmel sehen kann?
+Und wie viele Ohren muss ein Mann haben, bevor er Menschen weinen hören kann?
+Ja, und wie viele Todesfälle wird es dauern, bis er weiß, dass zu viele Menschen gestorben sind?
+"""
