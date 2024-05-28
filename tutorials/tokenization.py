@@ -170,7 +170,7 @@ def __(context_length_slider, mo):
 
 
 @app.cell
-def __(U, mo, next_tokens, random_seed_slider, tokenizer):
+def __(U, corpus_tokens, mo, next_tokens, random_seed_slider, tokenizer):
     gen_seed = random_seed_slider.value
     gen_tokens = U.generate_tokens(next_tokens, seed=gen_seed)
 
@@ -181,7 +181,7 @@ def __(U, mo, next_tokens, random_seed_slider, tokenizer):
 
     mo.ui.tabs({
         "Random generated": gen_ui,
-        #"Tokenized text": U.python_out(corpus_tokens),
+        "Tokenized original": U.tokens_out(corpus_tokens, tokenizer),
         #"Follower graph": U.plot_follower_context_graph(next_tokens),
         #"Vocabulary": U.python_out(vocabulary),
         #"Next token table": U.python_out(dict(next_tokens)),
