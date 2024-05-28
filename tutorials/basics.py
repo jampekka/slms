@@ -9,10 +9,20 @@ def __():
     import marimo as mo
     from pprint import pformat
     from collections import defaultdict
+
+    _pre_box_height = "10em";
+    def pre_box(text):
+        return mo.Html(f"""
+    <pre style="overflow: auto; height: {_pre_box_height};">
+    {text}
+    </pre>""")
     def python_out(code):
         #return code
-        return mo.Html("<pre>" + pformat(code, sort_dicts=False, compact=True) + "</pre>")
-    return defaultdict, mo, pformat, python_out
+        return mo.Html(f"""
+    <pre style="overflow: auto; max-height: {_pre_box_height};">
+    {pformat(code, sort_dicts=False, compact=True)}
+    </pre>""")
+    return defaultdict, mo, pformat, pre_box, python_out
 
 
 @app.cell
@@ -236,7 +246,7 @@ def __():
 def __(mo):
     mo.md(
         rf"""
-        You may recognize the lyrics. They're the verses of the Bob Dylan's [Blowin' in the Wind](https://www.youtube.com/watch?v=MMFj8uDubsE).
+        You may recognize the lyrics. They're the verses of the Bob Dylan's song [Blowin' in the Wind](https://www.youtube.com/watch?v=MMFj8uDubsE).
 
         We proceed like before, first splitting the lyrics into words:
         """
@@ -273,7 +283,19 @@ def __(blowin_words, python_out):
 
 @app.cell
 def __(mo):
-    mo.md(rf"Let's first do the same simple context length 1 model for the new lyrics:")
+    mo.md(
+        rf"""
+        ### More context
+        ---
+        We build a simple language model again with these lyrics. These simple models are usually called ''Markov Chain text generators''. This is a bit misleading, as even the next-token-predicting LLMs are Markov chains. We won't discuss what Markov chains really are and what makes a model such, but Wikipedia has a [rather good article](https://en.wikipedia.org/wiki/Markov_chain) of these if you're interested. 
+
+        The previously in the ''Happy Birthday'' example the model looked only one word at the time. However, we can easily use more than one word to predict the next one. How many words (or tokens) we use to predict the next one, is known as the **context length**. The context length of the previous example was 1.
+
+        For lyrics as simple as in ''Happy Birthday'' using a context length more than 1 didn't make much sense. However, with the more complicated lyrics we can see how the model behavior changes with different context lengths.
+
+        You can select the context length with the slider and see how the model changes.
+        """
+    )
     return
 
 
@@ -285,7 +307,14 @@ def __(mo):
 
 
 @app.cell
-def __(blowin_words, context_length_slider, defaultdict):
+def __(
+    blowin_words,
+    context_length_slider,
+    defaultdict,
+    mo,
+    plot_follower_graph,
+    python_out,
+):
     #blowin_context_length = 2
     blowin_context_length = context_length_slider.value
     # Doing this more succintly now
@@ -297,6 +326,10 @@ def __(blowin_words, context_length_slider, defaultdict):
     for *_context, _next_word in get_ngrams(blowin_words, blowin_context_length + 1):
         blowin_next_words1[tuple(_context)].append(_next_word)
 
+    mo.accordion({
+        "Next word table": python_out(dict(blowin_next_words1)),
+        "Next word graph": plot_follower_graph(blowin_next_words1)
+    })
     #python_out(dict(blowin_next_words1))
     return blowin_context_length, blowin_next_words1, get_ngrams
 
@@ -328,7 +361,7 @@ def __(mo):
 
 
 @app.cell
-def genblow1_1(blowin_next_words1, random, regen_blowin1_btn):
+def genblow1_1(blowin_next_words1, pre_box, random, regen_blowin1_btn):
     regen_blowin1_btn
 
     def _generate(next_words):
@@ -344,7 +377,7 @@ def genblow1_1(blowin_next_words1, random, regen_blowin1_btn):
             context = (*context[1:], next_word)
 
     _generated = list(_generate(blowin_next_words1))
-    ' '.join(_generated)
+    pre_box(' '.join(_generated))
     return
 
 
@@ -352,9 +385,9 @@ def genblow1_1(blowin_next_words1, random, regen_blowin1_btn):
 def __(mo):
     mo.md(
         rf"""
-        Don't seem to make much sense. But remember that this has to guess the next word just based on the previous one.
+        With a short context length the lyrics dont make much sense. With a longer context length it starts to just copy the originals. Try to find a context length that seems to make a nice tradeoff between these. As a hint, you can get something quite silly with some context lengths.
 
-        Try it out yourself! This time the generated lyrics are hidden. Don't peek at them before you're done, and pretend you don't remember what you picked before!
+        Try to be such a language model yourself! This time the generated lyrics are hidden. Don't peek at them before you're done, and pretend you don't remember what you picked before!
         """
     )
     return
