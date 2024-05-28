@@ -13,15 +13,31 @@ def __():
     _pre_box_height = "10em";
     def pre_box(text):
         return mo.Html(f"""
-    <pre style="overflow: auto; height: {_pre_box_height};">
+    <pre class="pre_out_box">
     {text}
     </pre>""")
     def python_out(code):
         #return code
         return mo.Html(f"""
-    <pre style="overflow: auto; max-height: {_pre_box_height};">
+    <pre class="python_out_box">
     {pformat(code, sort_dicts=False, compact=True)}
     </pre>""")
+
+    mo.Html(f"""
+    <style>
+    .python_out_box {{
+        overflow: auto !important;
+        max_height: {_pre_box_height};
+        font-size: 12px;
+    }}
+
+    .pre_out_box {{
+        overflow: auto !important;
+        height: {_pre_box_height};
+        font-size: 12px;
+    }}
+    </style>
+    """)
     return defaultdict, mo, pformat, pre_box, python_out
 
 
@@ -301,20 +317,14 @@ def __(mo):
 
 @app.cell
 def __(mo):
-    context_length_slider = mo.ui.slider(start=1, stop=5, label="Context length", full_width=True)
+    # TODO: Display context length value
+    context_length_slider = mo.ui.slider(start=1, stop=8, label="Context length", full_width=True)
     context_length_slider
     return context_length_slider,
 
 
 @app.cell
-def __(
-    blowin_words,
-    context_length_slider,
-    defaultdict,
-    mo,
-    plot_follower_graph,
-    python_out,
-):
+def __(blowin_words, context_length_slider, defaultdict):
     #blowin_context_length = 2
     blowin_context_length = context_length_slider.value
     # Doing this more succintly now
@@ -326,10 +336,6 @@ def __(
     for *_context, _next_word in get_ngrams(blowin_words, blowin_context_length + 1):
         blowin_next_words1[tuple(_context)].append(_next_word)
 
-    mo.accordion({
-        "Next word table": python_out(dict(blowin_next_words1)),
-        "Next word graph": plot_follower_graph(blowin_next_words1)
-    })
     #python_out(dict(blowin_next_words1))
     return blowin_context_length, blowin_next_words1, get_ngrams
 
@@ -362,6 +368,8 @@ def __(mo):
 
 @app.cell
 def genblow1_1(blowin_next_words1, pre_box, random, regen_blowin1_btn):
+    # TODO: Keep the seed constant across generations
+
     regen_blowin1_btn
 
     def _generate(next_words):
@@ -378,6 +386,15 @@ def genblow1_1(blowin_next_words1, pre_box, random, regen_blowin1_btn):
 
     _generated = list(_generate(blowin_next_words1))
     pre_box(' '.join(_generated))
+    return
+
+
+@app.cell
+def __(blowin_next_words1, mo, plot_follower_graph, python_out):
+    mo.accordion({
+        "Next word table": python_out(dict(blowin_next_words1)),
+        "Next word graph": plot_follower_graph(blowin_next_words1)
+    })
     return
 
 
@@ -440,8 +457,8 @@ def __(
 @app.cell
 def __(get_lyrics_blowin1, mo, reset_blowin1):
     _lyrics = ' '.join(get_lyrics_blowin1())
-    _spoiler = mo.accordion({'SPOILER': mo.Html(f"<pre>{_lyrics}</pre>")})
-    mo.hstack([_spoiler, reset_blowin1])
+    _spoiler = mo.accordion({'Your generated lyrics. SPOILER!': mo.Html(f"<pre>{_lyrics}</pre>")})
+    mo.vstack([_spoiler, reset_blowin1])
     return
 
 
