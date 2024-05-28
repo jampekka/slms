@@ -9,36 +9,10 @@ def __():
     import marimo as mo
     from pprint import pformat
     from collections import defaultdict
+    import utils as U
 
-    _pre_box_height = "10em";
-    def pre_box(text):
-        return mo.Html(f"""
-    <pre class="pre_out_box">
-    {text}
-    </pre>""")
-    def python_out(code):
-        #return code
-        return mo.Html(f"""
-    <pre class="python_out_box">
-    {pformat(code, sort_dicts=False, compact=True)}
-    </pre>""")
-
-    mo.Html(f"""
-    <style>
-    .python_out_box {{
-        overflow: auto !important;
-        max_height: {_pre_box_height};
-        font-size: 12px;
-    }}
-
-    .pre_out_box {{
-        overflow: auto !important;
-        height: {_pre_box_height};
-        font-size: 12px;
-    }}
-    </style>
-    """)
-    return defaultdict, mo, pformat, pre_box, python_out
+    U.init_output
+    return U, defaultdict, mo, pformat
 
 
 @app.cell
@@ -81,9 +55,9 @@ def __(mo):
 
 
 @app.cell
-def __(corpus_text, python_out):
+def __(U, corpus_text):
     corpus_words = corpus_text.split(' ')
-    python_out(corpus_words)
+    U.python_out(corpus_words)
     return corpus_words,
 
 
@@ -100,10 +74,10 @@ def __(mo):
 
 
 @app.cell
-def __(corpus_words, python_out):
+def __(U, corpus_words):
     # Using dict instead of set to keep the order
     _vocabulary = {w: None for w in corpus_words}.keys()
-    python_out(list(_vocabulary))
+    U.python_out(list(_vocabulary))
     return
 
 
@@ -125,7 +99,7 @@ def __(mo):
 
 
 @app.cell
-def __(corpus_words, python_out):
+def __(U, corpus_words):
     next_words = {}
     for i in range(len(corpus_words)-1):
         word = corpus_words[i]
@@ -133,7 +107,7 @@ def __(corpus_words, python_out):
         if word not in next_words:
             next_words[word] = []
         next_words[word].append(next_word)
-    python_out(next_words)
+    U.python_out(next_words)
     return i, next_word, next_words, word
 
 
@@ -144,36 +118,9 @@ def __(mo):
 
 
 @app.cell
-def __(mo, next_words):
-
-
-    def graph_out(svg):
-        return mo.Html(f"""
-            <div style="overflow: auto; max-height: 30em;">
-            {svg}
-            </div>
-        """)
-
-    def plot_follower_graph(next_words):
-        # TODO: This is fugly. Use dot
-        import pydot
-
-        graph = pydot.Dot("follower_graph", ordering="in")
-        def mangle(s):
-            #if isinstance(s, tuple) and len(s) == 1:
-            #    s = s[0]
-            return repr(s).replace(r'\n', r'\\n')
-        for context, followers in next_words.items():
-            # TODO: Fix for 
-            graph.add_node(pydot.Node(mangle(context)))
-            for follower in followers:
-                graph.add_edge(pydot.Edge(mangle(context), mangle(follower)))
-        svg = graph.create_svg().decode('utf-8')
-        
-        return graph_out(svg)
-
-    plot_follower_graph(next_words)
-    return graph_out, plot_follower_graph
+def __(U, next_words):
+    U.plot_follower_graph(next_words)
+    return
 
 
 @app.cell
@@ -287,9 +234,9 @@ def __(mo):
 
 
 @app.cell
-def __(blowin_text, python_out):
+def __(U, blowin_text):
     blowin_words = blowin_text.split(' ')
-    python_out(blowin_words)
+    U.python_out(blowin_words)
     return blowin_words,
 
 
@@ -306,10 +253,8 @@ def __(mo):
 
 
 @app.cell
-def __(blowin_words, python_out):
-    # Using dict instead of set to keep the order
-    _vocabulary = {w: None for w in blowin_words}.keys()
-    python_out(list(_vocabulary))
+def __(U, blowin_words):
+    U.python_out(list(U.corpus_to_vocabulary(blowin_words)))
     return
 
 
@@ -332,9 +277,15 @@ def __(mo):
 
 
 @app.cell
+def __(context_length_slider, mo):
+    mo.md(f"The context length is {context_length_slider.value}")
+    return
+
+
+@app.cell
 def __(mo):
     # TODO: Display context length value
-    context_length_slider = mo.ui.slider(start=1, stop=8, label="Context length", full_width=True)
+    context_length_slider = mo.ui.slider(start=1, stop=8, full_width=True)
     context_length_slider
     return context_length_slider,
 
@@ -480,7 +431,14 @@ def __(get_lyrics_blowin1, mo, reset_blowin1):
 
 @app.cell
 def __(mo):
-    mo.md(rf"")
+    mo.md(
+        rf"""
+        ---
+        In the next notebook, we'll take a closer look at **tokenization**, i.e. how we split the text for processing.
+
+        [Continue to Tokenization >](?file=tokenization.py)
+        """
+    )
     return
 
 
