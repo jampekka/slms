@@ -144,20 +144,36 @@ def __(mo):
 
 
 @app.cell
-def __(next_words):
-    import networkx as nx
-    import matplotlib.pyplot as plt
+def __(mo, next_words):
+
+
+    def graph_out(svg):
+        return mo.Html(f"""
+            <div style="overflow: auto; max-height: 30em;">
+            {svg}
+            </div>
+        """)
 
     def plot_follower_graph(next_words):
         # TODO: This is fugly. Use dot
-        next_words = {repr(k): list(map(repr, v)) for k, v in next_words.items()}
-        graph = nx.from_dict_of_lists(next_words, create_using=nx.DiGraph)
-        #nx.draw_pydot(graph)
-        nx.draw(graph, arrows=True, with_labels=True)
-        return plt.gca()
+        import pydot
+
+        graph = pydot.Dot("follower_graph", ordering="in")
+        def mangle(s):
+            #if isinstance(s, tuple) and len(s) == 1:
+            #    s = s[0]
+            return repr(s).replace(r'\n', r'\\n')
+        for context, followers in next_words.items():
+            # TODO: Fix for 
+            graph.add_node(pydot.Node(mangle(context)))
+            for follower in followers:
+                graph.add_edge(pydot.Edge(mangle(context), mangle(follower)))
+        svg = graph.create_svg().decode('utf-8')
+        
+        return graph_out(svg)
 
     plot_follower_graph(next_words)
-    return nx, plot_follower_graph, plt
+    return graph_out, plot_follower_graph
 
 
 @app.cell
