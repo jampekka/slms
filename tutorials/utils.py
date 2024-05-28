@@ -44,7 +44,7 @@ def tokens_out(tokens, tokenizer):
         string += "\n"*n_newlines
 
         out += f'<span style="background-color: {color}; text-decoration: {decoration}">{string}</span>'
-    
+    out = f'<div style="overflow: auto; height: {_pre_box_height};">{out}</div>'
     return pre_box(out)
 
 def corpus_to_vocabulary(tokens):
@@ -161,17 +161,17 @@ Happy birthday to you
 """
 
 blowin_text = """
-Yes, and how many roads must a man walk down, before you call him a man? 
-And how many seas must a white dove sail, before she sleeps in the sand? 
-Yes, and how many times must the cannonballs fly, before they're forever banned? 
+Yes, and how many roads must a man walk down, before you call him a man?
+And how many seas must a white dove sail, before she sleeps in the sand?
+Yes, and how many times must the cannonballs fly, before they're forever banned?
 
-Yes, and how many years must a mountain exist, before it is washed to the sea? 
-And how many years can some people exist, before they're allowed to be free? 
-Yes, and how many times can a man turn his head, and pretend that he just doesn't see? 
+Yes, and how many years must a mountain exist, before it is washed to the sea?
+And how many years can some people exist, before they're allowed to be free?
+Yes, and how many times can a man turn his head, and pretend that he just doesn't see?
 
-Yes, and how many times must a man look up, before he can see the sky? 
-And how many ears must one man have, before he can hear people cry? 
-Yes, and how many deaths will it take 'til he knows, that too many people have died? 
+Yes, and how many times must a man look up, before he can see the sky?
+And how many ears must one man have, before he can hear people cry?
+Yes, and how many deaths will it take 'til he knows, that too many people have died?
 """
 
 blowin_text_finnish = """

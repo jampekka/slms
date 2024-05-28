@@ -198,26 +198,32 @@ def __(mo, tokenizer_tabs):
 
 
 @app.cell
-def __(context_length_slider, mo):
+def __(mo):
     mo.md(
         f"""
         ## Playground (watch this change!)
         ---
-
-        {context_length_slider}
         """
     )
     return
 
 
 @app.cell
-def __(U, corpus_tokens, mo, next_tokens, random_seed_slider, tokenizer):
+def __(
+    U,
+    context_length_slider,
+    corpus_tokens,
+    mo,
+    next_tokens,
+    random_seed_slider,
+    tokenizer,
+):
     gen_seed = random_seed_slider.value
     gen_tokens = U.generate_tokens(next_tokens, seed=gen_seed)
 
     gen_ui = mo.vstack([
         U.tokens_out(gen_tokens, tokenizer),
-        random_seed_slider
+        mo.hstack([context_length_slider, random_seed_slider])
     ])
 
     mo.ui.tabs({
