@@ -120,7 +120,7 @@ def plot_follower_context_graph(next_words):
     svg = graph.create_svg().decode('utf-8')
     return graph_out(svg)
 
-def generate_tokens(next_words, context=None, max_tokens=50, seed=3):
+def generate_tokens(next_words, context=None, max_tokens=200, seed=3):
     rng = random.Random(seed)
 
     if context is None:
