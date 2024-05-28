@@ -53,13 +53,45 @@ def plot_follower_graph(next_words):
         #    s = s[0]
         return repr(s).replace(r'\n', r'\\n')
     for context, followers in next_words.items():
-        # TODO: Fix for 
         graph.add_node(pydot.Node(mangle(context)))
         for follower in followers:
-            graph.add_edge(pydot.Edge(mangle(context), mangle(follower)))
+            edge = graph.add_edge(pydot.Edge(mangle(context), mangle(follower)))
+            # A bit of a hack
+            #if hasattr(followers, 'get'):
+            #    edge.set_label(followers.get(follower))
+            #else:
+            #    count = None
+            
     svg = graph.create_svg().decode('utf-8')
-
     return graph_out(svg)
+
+def plot_follower_context_graph(next_words):
+    # TODO: This is fugly. Use dot
+    import pydot
+
+    graph = pydot.Dot("follower_graph", ordering="in", strict=True)
+    def mangle(s):
+        #if isinstance(s, tuple) and len(s) == 1:
+        #    s = s[0]
+        return repr(s).replace(r'\n', r'\\n')
+    for context, followers in next_words.items():
+        #graph.add_node(pydot.Node(mangle(context)))
+        for follower in followers:
+            # A bit of a hack
+            #edge = graph.add_edge(pydot.Edge(mangle(context), mangle(follower)))
+            new_context = (*context[1:], follower)
+            for follower in next_words.get(context, []):
+                follower_context = (*context[1:], follower)
+                graph.add_edge(pydot.Edge(
+                    mangle(context),
+                    mangle(follower_context),
+                    label=mangle(follower)
+                ))
+
+    svg = graph.create_svg().decode('utf-8')
+    return graph_out(svg)
+
+
 
 # Doing this more succintly now
 def get_ngrams(tokens, n):

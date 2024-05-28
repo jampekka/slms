@@ -105,7 +105,7 @@ def __(U, context_length_slider, corpus_text, mo, s):
         "Tokenized text": U.python_out(corpus_tokens),
         "Vocabulary": U.python_out(vocabulary),
         "Next token table": U.python_out(dict(next_tokens)),
-        "Follower graph": U.plot_follower_graph(next_tokens),
+        "Follower graph": U.plot_follower_context_graph(next_tokens),
     })
     return (
         CharacterTokenizer,
