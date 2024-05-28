@@ -88,13 +88,13 @@ def __(mo):
         
     }
 
-    context_length_slider = mo.ui.slider(start=1, value = 2, stop=10, full_width=True)
+    context_length_slider = mo.ui.slider(start=1, value = 2, stop=10, full_width=False, label="Context length", show_value=True)
 
     tokenizer_tabs = mo.ui.tabs(
         tokenizer_texts
     )
     tokenizer_selector = mo.ui.dropdown(options=tokenizers.keys(), value="Word", label="Tokenizer")
-    random_seed_slider = mo.ui.slider(start=1, value=1, stop=30, full_width=True, label="Variation (random seed)")
+    random_seed_slider = mo.ui.slider(start=1, value=1, stop=30, full_width=False, show_value=True, label="Variation (random seed)")
 
 
     return (
