@@ -36,7 +36,7 @@ def __(mo):
 
 
 @app.cell
-def __(U, mo):
+def __(U):
     class Tokenizer:
         def tokens_to_strings(self, tokens):
             return map(self.token_to_string, tokens)
@@ -75,7 +75,7 @@ def __(U, mo):
     class SubwordTokenizer(Tokenizer):
         def __init__(self):
             self._tok = transformers.AutoTokenizer.from_pretrained(_BASE_MODEL)
-        
+
         def __call__(self, s):
             # Using strings instead of ids to avoid confusion
             token_ids = self._tok(s)['input_ids']
@@ -94,7 +94,37 @@ def __(U, mo):
         "German": U.blowin_text_german,
     }
 
+
+    return (
+        CharacterTokenizer,
+        HackyWordTokenizer,
+        SubwordTokenizer,
+        Tokenizer,
+        WordTokenizer,
+        languages,
+        re,
+        tokenizers,
+        transformers,
+    )
+
+
+@app.cell
+def __(languages, mo):
     language_selector = mo.ui.dropdown(options=languages, value="English", allow_select_none=False)
+
+    random_seed_slider = mo.ui.slider(start=1, value=1, stop=30, full_width=False, show_value=True, label="Variation (random seed)")
+    return language_selector, random_seed_slider
+
+
+@app.cell
+def __(language_selector):
+    corpus_text = language_selector.value
+    return corpus_text,
+
+
+@app.cell
+def __(corpus_text, language_selector, mo, tokenizers):
+    corpus_text_first_line = corpus_text.strip().split('\n')[0]
 
     tokenizer_texts = {
         "Word tokenizer": mo.md("""
@@ -112,7 +142,7 @@ def __(U, mo):
 
         A common method for subword tokenization is [Byte Pair Encoding](https://en.wikipedia.org/wiki/Byte_pair_encoding). The tokenizer in this examples uses that method, and is in fact the same tokenizer that was used for GPT-2.
 
-        You may notice that for English the resulting tokenization is almost exactly the same as with word tokenization, with the difference that spaces are included in the tokens. However, see what happens if you do a Finnish or German translation of the lyrics: {language_selector}
+        You may notice that for English the resulting tokenization is not that different from the word tokenization. A major difference is that spaces are included in the tokens. However, see what happens if you do a Finnish or German translation of the lyrics: {language_selector}
         """),
     }
 
@@ -122,40 +152,17 @@ def __(U, mo):
         tokenizer_texts
     )
     tokenizer_selector = mo.ui.dropdown(options=tokenizers.keys(), value="Word", label="Tokenizer")
-    random_seed_slider = mo.ui.slider(start=1, value=1, stop=30, full_width=False, show_value=True, label="Variation (random seed)")
-
-
     return (
-        CharacterTokenizer,
-        HackyWordTokenizer,
-        SubwordTokenizer,
-        Tokenizer,
-        WordTokenizer,
         context_length_slider,
-        language_selector,
-        languages,
-        random_seed_slider,
-        re,
+        corpus_text_first_line,
         tokenizer_selector,
         tokenizer_tabs,
         tokenizer_texts,
-        tokenizers,
-        transformers,
     )
 
 
 @app.cell
-def __(
-    U,
-    context_length_slider,
-    language_selector,
-    tokenizer_tabs,
-    tokenizers,
-):
-
-
-    corpus_text = language_selector.value
-
+def __(U, context_length_slider, corpus_text, tokenizer_tabs, tokenizers):
     tokenizer_type = tokenizer_tabs.value.split()[0]
     tokenizer = tokenizers[tokenizer_type]
     context_length = context_length_slider.value
@@ -168,7 +175,6 @@ def __(
     U.tokens_out(corpus_tokens, tokenizer)
     return (
         context_length,
-        corpus_text,
         corpus_tokens,
         next_tokens,
         tokenizer,
@@ -238,18 +244,20 @@ def __(
 
 @app.cell
 def __(language_selector, mo):
-    mo.md(
-        rf"""
-        Lyrics language {language_selector}
-
-        (Translation by Google Translate)
-        """
-    )
+    mo.md(rf"Lyrics language {language_selector} (Translation by Google Translate)")
     return
 
 
 @app.cell
-def __():
+def __(mo):
+    mo.md(
+        rf"""
+        ---
+        In the next notebook, we'll learn basics of neural networks and how they can be used to create more flexible and scalable language models.
+
+        [Continue to Neural Networks >](?file=tokenization.py)
+        """
+    )
     return
 
 
