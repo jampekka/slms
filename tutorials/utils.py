@@ -44,7 +44,7 @@ def tokens_out(tokens, tokenizer):
         string += "\n"*n_newlines
 
         out += f'<span style="background-color: {color}; text-decoration: {decoration}">{string}</span>'
-    out = f'<div style="overflow: auto; height: {_pre_box_height};">{out}</div>'
+    #out = f'<div style="overflow: auto; height: {_pre_box_height};">{out}</div>'
     return pre_box(out)
 
 def corpus_to_vocabulary(tokens):
