@@ -117,20 +117,19 @@ def __(languages, mo):
 
 
 @app.cell
-def __(language_selector):
-    corpus_text = language_selector.value
-    return corpus_text,
+def __():
+    return
 
 
 @app.cell
-def __(corpus_text, language_selector, mo, tokenizers):
-    corpus_text_first_line = corpus_text.strip().split('\n')[0]
+def __(mo):
+    #corpus_text_first_line = corpus_text.strip().split('\n')[0]
 
     tokenizer_texts = {
         "Word tokenizer": mo.md("""
         The word tokenizer splits the text into individual words. This tends to generate somewhat legible text even with short context lengths. However, it can't create new words!
 
-        This is not so bad in English language that has very few inflections. However, in synthetic and agglutinative languages like Finnish this is a big problem, as you can form new words that have never been uttered in the history of the world!
+        This is not so bad in English that has quite few inflections. However, in synthetic and agglutinative languages like Finnish this is a big problem, as you can form new words that have never been uttered in the history of the world!
         """),
         "Character tokenizer": mo.md("""
         The character tokenizer splits the text into individual characters. With this we can create new words, but especially with shorter context length, it produces total gibberish!
@@ -142,45 +141,54 @@ def __(corpus_text, language_selector, mo, tokenizers):
 
         A common method for subword tokenization is [Byte Pair Encoding](https://en.wikipedia.org/wiki/Byte_pair_encoding). The tokenizer in this examples uses that method, and is in fact the same tokenizer that was used for GPT-2.
 
-        You may notice that for English the resulting tokenization is not that different from the word tokenization. A major difference is that spaces are included in the tokens. However, see what happens if you do a Finnish or German translation of the lyrics: {language_selector}
+        You may notice that for English the resulting tokenization is not that different from the word tokenization. A major difference is that spaces are included in the tokens. However, see what happens if you do a Finnish or German translation of the lyrics.
         """),
     }
 
     context_length_slider = mo.ui.slider(start=1, value = 2, stop=10, full_width=False, label="Context length", show_value=True)
 
     tokenizer_tabs = mo.ui.tabs(
-        tokenizer_texts
-    )
-    tokenizer_selector = mo.ui.dropdown(options=tokenizers.keys(), value="Word", label="Tokenizer")
-    return (
-        context_length_slider,
-        corpus_text_first_line,
-        tokenizer_selector,
-        tokenizer_tabs,
         tokenizer_texts,
+        value="Word"
     )
+
+    return context_length_slider, tokenizer_tabs, tokenizer_texts
 
 
 @app.cell
-def __(U, context_length_slider, corpus_text, tokenizer_tabs, tokenizers):
+def __(tokenizer_tabs, tokenizers):
     tokenizer_type = tokenizer_tabs.value.split()[0]
     tokenizer = tokenizers[tokenizer_type]
+    return tokenizer, tokenizer_type
+
+
+@app.cell
+def __(
+    U,
+    context_length_slider,
+    language_selector,
+    tokenizer,
+    tokenizer_type,
+):
+    corpus_text = language_selector.value
     context_length = context_length_slider.value
-
     corpus_tokens = tokenizer(corpus_text)
+    print(tokenizer, tokenizer_type, corpus_tokens)
     vocabulary = U.corpus_to_vocabulary(corpus_tokens)
+
+    return context_length, corpus_text, corpus_tokens, vocabulary
+
+
+@app.cell
+def __():
+    return
+
+
+@app.cell
+def __(U, context_length, corpus_tokens, tokenizer):
     next_tokens = U.get_next_token_table(corpus_tokens, context_length)
-
-
     U.tokens_out(corpus_tokens, tokenizer)
-    return (
-        context_length,
-        corpus_tokens,
-        next_tokens,
-        tokenizer,
-        tokenizer_type,
-        vocabulary,
-    )
+    return next_tokens,
 
 
 @app.cell
@@ -200,6 +208,12 @@ def __(mo, tokenizer_tabs):
         </div>
         """
     )
+    return
+
+
+@app.cell
+def __(language_selector, mo):
+    mo.md(rf"Lyrics language {language_selector} (Translation by Google Translate)")
     return
 
 
@@ -240,12 +254,6 @@ def __(
         #"Next token table": U.python_out(dict(next_tokens)),
     })
     return gen_seed, gen_tokens, gen_ui
-
-
-@app.cell
-def __(language_selector, mo):
-    mo.md(rf"Lyrics language {language_selector} (Translation by Google Translate)")
-    return
 
 
 @app.cell
