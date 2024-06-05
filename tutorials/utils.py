@@ -201,3 +201,47 @@ Ja, und wie oft muss ein Mensch nach oben schauen, bevor er den Himmel sehen kan
 Und wie viele Ohren muss ein Mann haben, bevor er Menschen weinen hören kann?
 Ja, und wie viele Todesfälle wird es dauern, bis er weiß, dass zu viele Menschen gestorben sind?
 """
+
+class Tokenizer:
+    def tokens_to_strings(self, tokens):
+        return map(self.token_to_string, tokens)
+
+    def detokenize(self, tokens):
+        strings = self.tokens_to_strings(tokens)
+        return ''.join(strings)
+
+    def token_to_string(self, s):
+        return s
+
+class HackyWordTokenizer(Tokenizer):
+    def __call__(self, s):
+        return s.split(' ')
+
+    def tokens_to_strings(self, tokens):
+        for token in tokens:
+            yield token
+            # TODO: Shouldn't yield last space
+            yield ' '
+
+import re
+class WordTokenizer(Tokenizer):
+    def __call__(self, s):
+        out = re.split('( +|\n+)', s)
+        return [t for t in out if t]
+
+class CharacterTokenizer(Tokenizer):
+    def __call__(self, s):
+        return list(s)
+
+import transformers
+
+#_BASE_MODEL="EleutherAI/pythia-14m"
+_BASE_MODEL="facebook/opt-125m"
+class SubwordTokenizer(Tokenizer):
+    def __init__(self):
+        self._tok = transformers.AutoTokenizer.from_pretrained(_BASE_MODEL)
+
+    def __call__(self, s):
+        # Using strings instead of ids to avoid confusion
+        token_ids = self._tok(s)['input_ids']
+        return [self._tok.decode([id]) for id in token_ids]

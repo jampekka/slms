@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.6.8"
+__generated_with = "0.6.14"
 app = marimo.App()
 
 
@@ -37,55 +37,13 @@ def __(mo):
 
 @app.cell
 def __(U):
-    class Tokenizer:
-        def tokens_to_strings(self, tokens):
-            return map(self.token_to_string, tokens)
 
-        def detokenize(self, tokens):
-            strings = self.tokens_to_strings(tokens)
-            return ''.join(strings)
-
-        def token_to_string(self, s):
-            return s
-
-    class HackyWordTokenizer(Tokenizer):
-        def __call__(self, s):
-            return s.split(' ')
-
-        def tokens_to_strings(self, tokens):
-            for token in tokens:
-                yield token
-                # TODO: Shouldn't yield last space
-                yield ' '
-
-    import re
-    class WordTokenizer(Tokenizer):
-        def __call__(self, s):
-            out = re.split('( +|\n+)', s)
-            return [t for t in out if t]
-
-    class CharacterTokenizer(Tokenizer):
-        def __call__(self, s):
-            return list(s)
-
-    import transformers
-
-    #_BASE_MODEL="EleutherAI/pythia-14m"
-    _BASE_MODEL="facebook/opt-125m"
-    class SubwordTokenizer(Tokenizer):
-        def __init__(self):
-            self._tok = transformers.AutoTokenizer.from_pretrained(_BASE_MODEL)
-
-        def __call__(self, s):
-            # Using strings instead of ids to avoid confusion
-            token_ids = self._tok(s)['input_ids']
-            return [self._tok.decode([id]) for id in token_ids]
 
 
     tokenizers = {
-        "Word": WordTokenizer(),
-        "Character": CharacterTokenizer(),
-        "Subword": SubwordTokenizer(),
+        "Word": U.WordTokenizer(),
+        "Character": U.CharacterTokenizer(),
+        "Subword": U.SubwordTokenizer(),
     }
 
     languages = {
@@ -93,19 +51,7 @@ def __(U):
         "Finnish": U.blowin_text_finnish,
         "German": U.blowin_text_german,
     }
-
-
-    return (
-        CharacterTokenizer,
-        HackyWordTokenizer,
-        SubwordTokenizer,
-        Tokenizer,
-        WordTokenizer,
-        languages,
-        re,
-        tokenizers,
-        transformers,
-    )
+    return languages, tokenizers
 
 
 @app.cell
@@ -151,7 +97,6 @@ def __(mo):
         tokenizer_texts,
         value="Word"
     )
-
     return context_length_slider, tokenizer_tabs, tokenizer_texts
 
 
@@ -175,7 +120,6 @@ def __(
     corpus_tokens = tokenizer(corpus_text)
     print(tokenizer, tokenizer_type, corpus_tokens)
     vocabulary = U.corpus_to_vocabulary(corpus_tokens)
-
     return context_length, corpus_text, corpus_tokens, vocabulary
 
 
