@@ -9,31 +9,20 @@ def __():
     import marimo as mo
     import utils as U
     import altair as alt
+    import matplotlib.pyplot as plt
     import pandas as pd
     import polars as pl
     import numpy as np
     import torch
     from torch import nn
     import torch.nn.functional as F
-    return F, U, alt, mo, nn, np, pd, pl, torch
+    return F, U, alt, mo, nn, np, pd, pl, plt, torch
 
 
 @app.cell
-def __(corpus_selector, mo):
-    mo.md(
-        rf"""
-        # Neural network models
+def __():
+    # Define options
 
-        In this notebook, we'll build a very simple **neural network** language model. Conceptually the resulting model is very close to current popular LLMs but the neural network in them is vastly larger (have often billions of parameters vs our few parameters) and have some more constraints in their structure (e.g. in models based on the Transformer architecture).
-
-        Let's analyze the lyrics of {corpus_selector}. We use the simple word tokenizer to keep things more intuitive. The neural network works exactly the same with other tokenizers.
-        """
-    )
-    return
-
-
-@app.cell
-def __(mo):
     _happy_birthday_text = """
      Happy birthday to you 
      Happy birthday to you 
@@ -55,32 +44,55 @@ def __(mo):
      Yes, and how many deaths will it take 'til he knows, that too many people have died? 
     """
 
+    _blowin_text = """
+     Yes, and how many roads must a man walk down, before you call him a man? 
+     And how many seas must a white dove sail, before she sleeps in the sand? 
+     Yes, and how many times must the cannonballs fly, before they're forever banned? 
+    """
+
     corpus_selections = {
         "Happy Birthday": _happy_birthday_text,
         "Blowin' in the wind": _blowin_text
     }
 
-    corpus_selector = mo.ui.dropdown(corpus_selections, value="Happy Birthday")
-    return corpus_selections, corpus_selector
+    n_iterations = 100
+    context_length = 1
+
+    return context_length, corpus_selections, n_iterations
 
 
 @app.cell
-def __(U, corpus_selector):
-    tokenizer = U.HackyWordTokenizer()
+def __(corpus_selections, mo, n_iterations):
+    # Define controls
+    corpus_selector = mo.ui.dropdown(corpus_selections, value="Happy Birthday")
+    iter_selector = mo.ui.slider(0, n_iterations-1, value=20,
+                                 show_value=True,
+                                 label="Training iteration",
+                                 full_width=True,
+                                 debounce=True,
+                                )
+    return corpus_selector, iter_selector
 
+
+@app.cell
+def __(corpus_selector):
+    # Define variables derived from controls
     corpus_name = corpus_selector.selected_key
     corpus_text = corpus_selector.value
+    return corpus_name, corpus_text
+
+
+@app.cell
+def __(U, corpus_text):
+    # Define variables derived from control variables
+    tokenizer = U.HackyWordTokenizer()
 
     corpus_words = tokenizer(corpus_text)
 
     vocabulary = U.corpus_to_vocabulary(corpus_words)
     vocabulary_size = len(vocabulary)
     word_vocab_pos = {w: i for i, w in enumerate(vocabulary)}
-
-    U.tokens_out(corpus_words, tokenizer)
     return (
-        corpus_name,
-        corpus_text,
         corpus_words,
         tokenizer,
         vocabulary,
@@ -90,13 +102,44 @@ def __(U, corpus_selector):
 
 
 @app.cell
-def __(mo):
-    mo.md(rf"And let's do the simple context length one model, where we predict the next word just based on the current word:")
+def __(corpus_name, mo):
+    mo.md(
+        rf"""
+        # Neural network models
+
+        In this notebook, we'll build a very simple **neural network** language model. Conceptually the resulting model is very close to current popular LLMs but the neural network in them is vastly larger (have often billions of parameters vs our few parameters) and have some more constraints in their structure (e.g. in models based on the Transformer architecture).
+
+        Let's analyze lyrics of {corpus_name}. We use the simple word tokenizer to keep things more intuitive. The neural network works exactly the same with other tokenizers.
+        """
+    )
     return
 
 
 @app.cell
-def __(U, corpus_words):
+def __():
+    return
+
+
+@app.cell
+def __(U, corpus_words, tokenizer):
+    U.tokens_out(corpus_words, tokenizer)
+    return
+
+
+@app.cell
+def __(mo):
+    mo.md(
+        rf"""
+        ## The basic model as a neural network
+
+        And let's do the simple context length one model, where we predict the next word just based on the current word:
+        """
+    )
+    return
+
+
+@app.cell
+def __(U, context_length, corpus_words):
     next_words = {}
     for i in range(len(corpus_words)-1):
         word = corpus_words[i]
@@ -104,20 +147,35 @@ def __(U, corpus_words):
         if word not in next_words:
             next_words[word] = []
         next_words[word].append(next_word)
-    context_length = 1
+
     next_words_count = U.get_next_token_table(corpus_words, context_length=context_length)
     U.python_out(next_words)
-    return context_length, i, next_word, next_words, next_words_count, word
+    return i, next_word, next_words, next_words_count, word
 
 
 @app.cell
 def __(mo):
-    mo.md(rf"We can also visualize this model as a, well, network. On the left we have the current word, on the right we have the next word, and a line between them means that the next word can follow from the current word, and the strength of the line how likely it is to follow:")
+    mo.md(
+        rf"""
+        We can also visualize this model as a, well, network. In the graph, on the left we have the current word, on the right we have the next word, and a line between them means that the next word can follow from the current word, and the strength of the line how likely it is to follow.
+
+        In the table we have the same information, but as numbers.
+        """
+    )
     return
 
 
 @app.cell
-def __(alt, mo, next_words_count, torch, vocabulary, vocabulary_size):
+def __(
+    mo,
+    next_words_count,
+    np,
+    pd,
+    plt,
+    torch,
+    vocabulary,
+    vocabulary_size,
+):
     import itertools
 
     _current_to_next = list(itertools.permutations(range(len(vocabulary)), 2))
@@ -129,70 +187,56 @@ def __(alt, mo, next_words_count, torch, vocabulary, vocabulary_size):
             _next = vocabulary[_j]
             _follower_counts[_i,_j] = next_words_count[_current].get(_next, 0)
 
-    connections = _connections = _follower_counts/_follower_counts.sum(dim=0)
+    connections = _connections = _follower_counts/_follower_counts.sum(dim=0).reshape(-1, 1)
 
-    def plot_nn_layer(connections, left_labels=[], right_labels=[]):
+    def plot_nn_layer(connections, left_labels, right_labels):
+        from matplotlib.collections import LineCollection
         #froms, tos = np.nonzero(connections)
         #w = connections[x, y]
 
         leftpos = 0
         rightpos = 1
 
-        chart = alt.layer()
-        for x in range(connections.shape[0]):
-            for y in range(connections.shape[1]):
-                w = float(connections[x, y])
-                line = alt.Chart().mark_line(size=3).encode(
-                    x=alt.datum(leftpos, axis=None),
-                    y=alt.datum(-x, axis=None),
-                    x2=alt.datum(rightpos),
-                    y2=alt.datum(-y),
-                    opacity=alt.value(w*0.8)
-                )
+        nx, ny = connections.shape
+        #xs, ys = np.indices((nx, ny), sparse=True)
+        xs, ys = map(np.ravel, np.mgrid[0:nx, 0:ny])
+        weights = connections[xs, ys]
+        
+        token_positions = np.vstack((xs, ys)).T
+        n = len(token_positions)
+        side_positions = np.vstack((np.repeat(leftpos, n), np.repeat(rightpos, n))).T
+        segs = np.dstack((side_positions, token_positions))
+        lc = LineCollection(segs, color='black', alpha=weights*0.8)
+        ax = plt.gca()
+        ax.add_collection(lc)
 
-                chart += line
+        tax = ax.twinx()
 
-        for x, text in left_labels:
-            chart += alt.Chart().mark_text(align='right', fontSize=16).encode(
-                x=alt.datum(leftpos),
-                y=alt.datum(-x),
-                text=alt.value(text),
-            )
+        for a in [ax, tax]:
+            a.set_yticks(ticks=np.arange(nx), labels=left_labels)
+            a.set_ylim(max(*connections.shape), -1)
+            for spine in a.spines.values():
+                spine.set_visible(False)
 
-        for x, text in right_labels:
-            chart += alt.Chart().mark_text(align='left', fontSize=16).encode(
-                x=alt.datum(rightpos),
-                y=alt.datum(-x),
-                text=alt.value(text),
-            )
+        ax.set_xticks([])
+        
+        return ax
 
-        chart = chart.configure_axis(grid=False).configure_view(strokeWidth=0)
-        return mo.ui.altair_chart(chart)
+    def nn_weights_table(connections, left_labels, right_labels):
+        df = pd.DataFrame(connections,
+                          columns=left_labels,
+                          index=left_labels
+        )
+        return mo.ui.table(df, selection=None)
 
-    _labels = list(enumerate(map(repr, vocabulary)))
-    #plot_nn_layer(_connections, _labels, _labels)
+    _labels = list(map(repr, vocabulary))
 
-    #_x, _y = zip(*_current_to_next)
-    #
-    #_data = pd.DataFrame({'x': _x, 'y': _y})
-    #print(_data)
-    #_chart = alt.Chart(_data).mark_point().encode(x='x', y='y')
-    #mo.ui.altair_chart(_chart)
-    return connections, itertools, plot_nn_layer
-
-
-@app.cell
-def __(mo):
-    mo.md(rf"The same network can be also represented as weights, where the rows mean the current word, and columns the next word:")
-    return
-
-
-@app.cell
-def __(connections, mo, pd, vocabulary):
-    _voc = list(map(repr, vocabulary))
-    _df = pd.DataFrame(connections, columns=_voc, index=_voc)
-    mo.ui.table(_df, selection=None)
-    return
+    mo.ui.tabs({
+        "Weight graph": plot_nn_layer(_connections, _labels, _labels),
+        "Weight table": nn_weights_table(_connections, _labels, _labels)
+        }
+    )
+    return connections, itertools, nn_weights_table, plot_nn_layer
 
 
 @app.cell
@@ -200,6 +244,8 @@ def __(mo):
     mo.md(
         rf"""
         And here we have it! A neural network language model! It's admittedly very simple one, and what would be called a single layer neural network.
+
+        ## Neural network training
 
         We "trained" the neural network by explicitly calculating the followers. But typically neural networks are trained using optimization, i.e. we see some examples of previous and next words, and we try to make the neural network to match those examples as well as possible.
 
@@ -215,7 +261,7 @@ def __(
     U,
     context_length,
     corpus_words,
-    mo,
+    n_iterations,
     nn,
     torch,
     vocabulary_size,
@@ -238,6 +284,10 @@ def __(
 
             return logits
 
+        def next_probabilities(self, input):
+            logits = self(input)
+            return F.softmax(logits, dim=-1)
+
         def generate(self, context):
             context = torch.tensor(context)
             while True:
@@ -254,12 +304,11 @@ def __(
 
     _model = SimpleNnLm(vocabulary_size)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(_model.parameters(), lr=1e-1)
+    optimizer = torch.optim.AdamW(_model.parameters(), lr=5e-2)
 
     losses = []
     model_steps = []
-    n_iterations = 101
-    for _i in range(n_iterations):
+    for _i in range(n_iterations + 1):
         predictions = _model(contexts).squeeze(1)
         loss = criterion(predictions, targets.view(-1))
         model_steps.append(deepcopy(_model))
@@ -267,12 +316,6 @@ def __(
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        
-    iter_selector = mo.ui.slider(0, n_iterations-1, value=5,
-                                 show_value=True,
-                                 label="Training iteration",
-                                full_width=True,
-                                )
     return (
         SimpleNnLm,
         contexts,
@@ -280,11 +323,9 @@ def __(
         criterion,
         dataset,
         deepcopy,
-        iter_selector,
         loss,
         losses,
         model_steps,
-        n_iterations,
         optimizer,
         predictions,
         targets,
@@ -319,9 +360,11 @@ def __(
     model_steps,
     n_iterations,
     pd,
+    plot_nn_layer,
     tokenizer,
     torch,
     vocabulary,
+    vocabulary_size,
 ):
     torch.manual_seed(1337)
 
@@ -329,7 +372,9 @@ def __(
 
     model = model_steps[model_step]
 
-    _chart = alt.Chart(pd.DataFrame({'Fit iteration': range(n_iterations), 'Loss': losses})
+    next_probs = model.next_probabilities(torch.arange(vocabulary_size)).detach()
+
+    _chart = alt.Chart(pd.DataFrame({'Fit iteration': range(n_iterations+1), 'Loss': losses})
                       ).mark_line().encode(
                         x="Fit iteration",
                         y="Loss"
@@ -341,13 +386,20 @@ def __(
     generated = [vocabulary[id] for id in _gen_ids]
     generated = U.tokens_out(generated, tokenizer)
 
-    generated
+    _con_plot = plot_nn_layer(next_probs)
 
-    mo.vstack((
-        generated,
-    ))
+    mo.accordion({
+        "Connections": _con_plot,
+        "Generated lyrics": generated,
+        },
+        multiple=True
+    )
 
-    return generated, loss_chart, model, model_step
+    #mo.vstack((
+    #    generated,
+    #))
+
+    return generated, loss_chart, model, model_step, next_probs
 
 
 if __name__ == "__main__":
