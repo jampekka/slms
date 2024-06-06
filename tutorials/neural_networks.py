@@ -16,6 +16,8 @@ def __():
     import torch
     from torch import nn
     import torch.nn.functional as F
+
+    np.set_printoptions(precision=2)
     return F, U, alt, mo, nn, np, pd, pl, plt, torch
 
 
@@ -57,7 +59,6 @@ def __():
 
     n_iterations = 100
     context_length = 1
-
     return context_length, corpus_selections, n_iterations
 
 
@@ -65,7 +66,7 @@ def __():
 def __(corpus_selections, mo, n_iterations):
     # Define controls
     corpus_selector = mo.ui.dropdown(corpus_selections, value="Happy Birthday")
-    iter_selector = mo.ui.slider(0, n_iterations-1, value=20,
+    iter_selector = mo.ui.slider(0, n_iterations, value=20,
                                  show_value=True,
                                  label="Training iteration",
                                  full_width=True,
@@ -102,9 +103,11 @@ def __(U, corpus_text):
     vocabulary = U.corpus_to_vocabulary(corpus_words)
     vocabulary_size = len(vocabulary)
     word_vocab_pos = {w: i for i, w in enumerate(vocabulary)}
+    vocab_labels = list(map(repr, vocabulary))
     return (
         corpus_words,
         tokenizer,
+        vocab_labels,
         vocabulary,
         vocabulary_size,
         word_vocab_pos,
@@ -183,12 +186,13 @@ def __(
     pd,
     plt,
     torch,
+    vocab_labels,
     vocabulary,
     vocabulary_size,
 ):
     import itertools
 
-    _current_to_next = list(itertools.permutations(range(len(vocabulary)), 2))
+    _current_to_next = list(itertools.permutations(range(vocabulary_size, 2)))
 
     _follower_counts = torch.zeros((len(vocabulary), len(vocabulary)))
     for _i in range(vocabulary_size):
@@ -211,7 +215,7 @@ def __(
         #xs, ys = np.indices((nx, ny), sparse=True)
         xs, ys = map(np.ravel, np.mgrid[0:nx, 0:ny])
         weights = connections[xs, ys]
-        
+
         token_positions = np.vstack((xs, ys)).T
         n = len(token_positions)
         side_positions = np.vstack((np.repeat(leftpos, n), np.repeat(rightpos, n))).T
@@ -229,21 +233,24 @@ def __(
                 spine.set_visible(False)
 
         ax.set_xticks([])
-        
+
         return ax
 
     def nn_weights_table(connections, left_labels, right_labels):
+        # TODO: This doesn't seem to update properly
         df = pd.DataFrame(connections,
                           columns=left_labels,
                           index=left_labels
         )
-        return mo.ui.table(df, selection=None)
+        df = df.round(2) # Can't seem to control print precision otherwise
+        return df
+        #return mo.ui.table(df, selection=None)
 
-    _labels = list(map(repr, vocabulary))
-
+    _plot = plot_nn_layer(_connections, vocab_labels, vocab_labels)
+    _table = nn_weights_table(_connections, vocab_labels, vocab_labels)
     mo.ui.tabs({
-        "Weight graph": plot_nn_layer(_connections, _labels, _labels),
-        "Weight table": nn_weights_table(_connections, _labels, _labels)
+        "Weight graph": _plot,
+        "Weight table": _table
         }
     )
     return connections, itertools, nn_weights_table, plot_nn_layer
@@ -269,6 +276,7 @@ def __(mo):
 def __(F, nn, torch):
     class SimpleNnLm(nn.Module):
         def __init__(self, vocab_size):
+            torch.manual_seed(0)
             super().__init__()
             self.vocab_size = vocab_size
             # This would be faster with nn.Embedding, so we wouldn't have
@@ -311,7 +319,6 @@ def __(
     vocabulary_size,
     word_vocab_pos,
 ):
-    torch.manual_seed(1337)
     from copy import deepcopy
 
     corpus_ids = [word_vocab_pos[w] for w in corpus_words]
@@ -321,31 +328,35 @@ def __(
     targets = dataset[:,-1]
 
     _model = SimpleNnLm(vocabulary_size)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(_model.parameters(), lr=5e-2)
 
-    losses = []
-    model_steps = []
-    for _i in range(n_iterations + 1):
-        predictions = _model(contexts).squeeze(1)
-        loss = criterion(predictions, targets.view(-1))
-        model_steps.append(deepcopy(_model))
-        losses.append(float(loss))
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    def train_model(model):
+        torch.manual_seed(0)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.AdamW(model.parameters(), lr=5e-2)
+
+        losses = []
+        model_steps = []
+        for _i in range(n_iterations + 1):
+            predictions = model(contexts).squeeze(1)
+            loss = criterion(predictions, targets.view(-1))
+            model_steps.append(deepcopy(model))
+            losses.append(float(loss))
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        return losses, model_steps
+
+    losses, model_steps = train_model(_model)
     return (
         contexts,
         corpus_ids,
-        criterion,
         dataset,
         deepcopy,
-        loss,
         losses,
         model_steps,
-        optimizer,
-        predictions,
         targets,
+        train_model,
     )
 
 
@@ -376,8 +387,6 @@ def __(
     vocabulary,
     vocabulary_size,
 ):
-
-
     model_step = iter_selector.value
     model = model_steps[model_step]
 
@@ -393,29 +402,31 @@ def __(
 
 
 @app.cell
-def __(losses, mo, model_step, n_iterations, plt):
-    _, _ax = plt.subplots()
-    _ax.plot(range(n_iterations+1), losses, color='C0')
-    _ax.plot(model_step, losses[model_step], 'o', color='C0')
-    _ax.set_xlabel("Training iteration")
-    _ax.set_ylabel("Loss")
+def __(losses, mo, model_step, plt):
+    def plot_training_process(losses, color='C0', label=None, ax=None):
+        if ax is None:
+            ax = plt.gca()
+        ax.plot(range(len(losses)), losses, color=color, label=label)
+        ax.plot(model_step, losses[model_step], 'o', color=color)
+        ax.set_xlabel("Training iteration")
+        ax.set_ylabel("Loss")
+        return ax
 
     mo.accordion({
-        "Training progress": _ax
+        "Training progress": plot_training_process(losses)
     })
-
-    return
+    return plot_training_process,
 
 
 @app.cell
 def __(mo, weights_ui):
-    mo.md(
-        rf"""
-        ### Weights
-        {weights_ui}
-        ### Generated lyrics
-        """
-    )
+    mo.md(rf"{weights_ui}")
+    return
+
+
+@app.cell
+def __(mo):
+    mo.md(rf"### Generated lyrics")
     return
 
 
@@ -438,6 +449,202 @@ def __(
 
     mo.vstack((generated, generation_seed_selector))
     return generated,
+
+
+@app.cell
+def __(F, nn, torch):
+    class SimpleEmbedNnLm(nn.Module):
+        def __init__(self, vocab_size, embed_size):
+            torch.manual_seed(0)
+            super().__init__()
+            self.vocab_size = vocab_size
+            self.embed_size = embed_size
+            self.embedder = nn.Embedding(vocab_size, embed_size)
+            # Norming to keep the weights in a nice scale
+            #self.normer = nn.LayerNorm(embed_size, elementwise_affine=False, bias=False)
+            self.normer = nn.LayerNorm(embed_size)
+            self.mlp = nn.Linear(embed_size, vocab_size, bias=False)
+
+        def forward(self, input):
+            embedding = self.embedder(input)
+            #embedding = self.normer(embedding)
+            #logits = F.relu(self.mlp(embedding))
+            logits = self.mlp(embedding)
+            return logits
+
+        def next_probabilities(self, input):
+            logits = self(input)
+            return F.softmax(logits, dim=-1)
+
+        def generate(self, context, seed=None):
+            generator = None
+            if seed is not None:
+                generator = torch.Generator()
+                generator.manual_seed(seed)
+            context = torch.tensor(context)
+            while True:
+                yield context
+                logits = self(context)
+                probs = F.softmax(logits, dim=0)
+                context = torch.multinomial(probs, 1)[0]
+    return SimpleEmbedNnLm,
+
+
+@app.cell
+def __(mo):
+    #embed_size_selector = mo.ui.slider(1, 10, value=2, label="Embedding size", full_width=True, show_value=True)
+    _embed_choices = {str(i): i for i in range(1, 11)}
+    embed_size_selector = mo.ui.dropdown(_embed_choices, value='2')
+
+    return embed_size_selector,
+
+
+@app.cell
+def __(SimpleEmbedNnLm, embed_size_selector, train_model, vocabulary_size):
+    embed_size = embed_size_selector.value
+
+    _model = SimpleEmbedNnLm(vocabulary_size, embed_size)
+    #_model2 = SimpleNnLm(vocabulary_size)
+
+    losses_e, model_steps_e = train_model(_model)
+    return embed_size, losses_e, model_steps_e
+
+
+@app.cell
+def __(model_step, model_steps_e):
+    model_e = model_steps_e[model_step]
+    return model_e,
+
+
+@app.cell
+def __(
+    corpus_selector,
+    corpus_words,
+    embed_size,
+    embed_size_selector,
+    mo,
+    vocabulary_size,
+):
+    mo.md(
+        rf"""
+        ## Embeddings
+
+        Currently our neural network is actually rather large.
+
+        In {corpus_selector} we have `{vocabulary_size}` different tokens (words). To predict from each word to each word, we need `{vocabulary_size}x{vocabulary_size} = {vocabulary_size*vocabulary_size}` weights in our neural network. Given that we have a training set of only {len(corpus_words)} tokens, we are sure to overfit the data, i.e. just memorize the lyrics that we have.
+
+        But we can quite easily make it smaller by adding a smaller **hidden layer** often called an **embedding layer**. Let's try an embedding layer size {embed_size_selector}. 
+
+        This means we will first have `{vocabulary_size}x{embed_size}` input weights and the same amount of output weights. In total we'll have `{vocabulary_size}x{embed_size} + {embed_size}x{vocabulary_size} = {2*embed_size*vocabulary_size}` weights. That's about {round(2*embed_size*vocabulary_size/vocabulary_size**2*100)}% of the original weights!
+        """
+    )
+    return
+
+
+@app.cell
+def __(iter_selector):
+    iter_selector
+    return
+
+
+@app.cell
+def __(losses, losses_e, mo, plot_training_process, plt):
+    _, _ax = plt.subplots()
+
+    plot_training_process(losses, label="No embedding", color='C0', ax=_ax)
+    plot_training_process(losses_e, label="With embedding", color='C1', ax=_ax)
+    _ax.legend()
+    mo.accordion({
+        "Training progress": _ax
+    })
+    return
+
+
+@app.cell
+def __(F, model_e, np, plt, vocab_labels):
+    def plot_nn(layers, left_labels, right_labels):
+        from matplotlib.collections import LineCollection
+        #froms, tos = np.nonzero(connections)
+        #w = connections[x, y]
+        ax = plt.gca()
+        tax = ax.twinx()
+        for i, connections in enumerate(layers):
+            leftpos = i
+            rightpos = leftpos + 1
+            segs = []
+            alphas = []
+
+            nx, ny = connections.shape
+
+            for x in range(nx):
+                for y in range(ny):
+                    weight = connections[x, y]
+                    xc = (x + 0.5)/nx - 0.5
+                    yc = (y + 0.5)/ny - 0.5
+                    seg = (leftpos, xc), (rightpos, yc)
+                    segs.append(seg)
+                    
+                    alpha = np.minimum(1, np.abs(weight))*0.8
+                    alphas.append(alpha)
+            
+            """
+            nx, ny = connections.shape
+            #xs, ys = np.indices((nx, ny), sparse=True)
+            xs, ys = map(np.ravel, np.mgrid[0:nx, 0:ny])
+            weights = connections[xs, ys]
+
+            token_positions = np.vstack((xs, ys)).T
+            n = len(token_positions)
+            side_positions = np.vstack((np.repeat(leftpos, n), np.repeat(rightpos, n))).T
+            segs = np.dstack((side_positions, token_positions))
+            alpha = np.minimum(1, np.abs(weights))*0.8
+            """
+            lc = LineCollection(segs, color='black', alpha=alphas)
+            
+            ax.add_collection(lc)
+            
+        for a in [ax, tax]:
+            ticks = (np.arange(ny) + 0.5)/ny - 0.5
+            a.set_yticks(ticks=ticks, labels=left_labels)
+            a.set_ylim(ticks[-1], ticks[0])
+            a.set_xlim(0, len(layers))
+            for spine in a.spines.values():
+                spine.set_visible(False)
+
+        ax.set_xticks([])
+
+        return ax
+
+    def _mangle_weights(w):
+        return F.softmax(w.abs(), dim=-1).detach()
+
+    plot_nn((
+        _mangle_weights(model_e.embedder.weight),
+        _mangle_weights(model_e.mlp.weight).T
+           ), vocab_labels, vocab_labels)
+            
+    return plot_nn,
+
+
+@app.cell
+def __(
+    U,
+    corpus_ids,
+    generation_seed,
+    generation_seed_selector,
+    itertools,
+    mo,
+    model_e,
+    tokenizer,
+    vocabulary,
+):
+    _max_len = len(corpus_ids)
+    _gen_ids = itertools.islice(model_e.generate(corpus_ids[0], seed=generation_seed), _max_len)
+    _generated = [vocabulary[id] for id in _gen_ids]
+    _generated = U.tokens_out(_generated, tokenizer)
+
+    mo.vstack((_generated, generation_seed_selector))
+    return
 
 
 if __name__ == "__main__":
