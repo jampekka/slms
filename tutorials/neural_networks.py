@@ -19,14 +19,14 @@ def __():
 
 
 @app.cell
-def __(mo):
+def __(corpus_selector, mo):
     mo.md(
         rf"""
         # Neural network models
 
         In this notebook, we'll build a very simple **neural network** language model. Conceptually the resulting model is very close to current popular LLMs but the neural network in them is vastly larger (have often billions of parameters vs our few parameters) and have some more constraints in their structure (e.g. in models based on the Transformer architecture).
 
-        Let's go back to the Happy Birthday lyrics from the [basics](?file=basics), using the word tokenizer to keep things intuitive:
+        Let's analyze the lyrics of {corpus_selector}. We use the simple word tokenizer to keep things more intuitive. The neural network works exactly the same with other tokenizers.
         """
     )
     return
@@ -170,7 +170,7 @@ def __(alt, mo, next_words_count, torch, vocabulary, vocabulary_size):
         return mo.ui.altair_chart(chart)
 
     _labels = list(enumerate(map(repr, vocabulary)))
-    plot_nn_layer(_connections, _labels, _labels)
+    #plot_nn_layer(_connections, _labels, _labels)
 
     #_x, _y = zip(*_current_to_next)
     #
@@ -243,7 +243,8 @@ def __(
             while True:
                 yield context
                 logits = self(context)
-                context = torch.argmax(logits)
+                probs = F.softmax(logits, dim=0)
+                context = torch.multinomial(probs, 1)[0]
 
     corpus_ids = [word_vocab_pos[w] for w in corpus_words]
 
@@ -257,7 +258,7 @@ def __(
 
     losses = []
     model_steps = []
-    n_iterations = 100
+    n_iterations = 101
     for _i in range(n_iterations):
         predictions = _model(contexts).squeeze(1)
         loss = criterion(predictions, targets.view(-1))
@@ -267,7 +268,11 @@ def __(
         loss.backward()
         optimizer.step()
         
-    iter_selector = mo.ui.number(0, n_iterations, value=5)
+    iter_selector = mo.ui.slider(0, n_iterations-1, value=5,
+                                 show_value=True,
+                                 label="Training iteration",
+                                full_width=True,
+                                )
     return (
         SimpleNnLm,
         contexts,
@@ -287,8 +292,18 @@ def __(
 
 
 @app.cell
-def __(corpus_name, mo):
-    mo.md(rf"Below we can see the results of learning from the lyrics of {corpus_name}.")
+def __(corpus_name, corpus_selector, iter_selector, mo):
+    mo.md(
+        rf"""
+        Below we can see the results of learning from the lyrics of {corpus_name}. You can change how many iterations the model was trained with. With zero iterations the model should make no sense, but with more iterations it starts to get a bit better, especially with increased context length! With enough iterations, it should match the simple frequency table model we started with.
+
+        The Happy Birthday lyrics may not be that interesting, so try others: {corpus_selector}!
+
+        Note that the whole document changes to the lyrics you select, so scroll back to the beginning too!
+
+        {iter_selector}
+        """
+    )
     return
 
 
@@ -305,9 +320,10 @@ def __(
     n_iterations,
     pd,
     tokenizer,
+    torch,
     vocabulary,
 ):
-
+    torch.manual_seed(1337)
 
     model_step = iter_selector.value
 
@@ -327,10 +343,9 @@ def __(
 
     generated
 
-    #mo.vstack((
-    #    iter_selector,
-    #    generated,
-    #))
+    mo.vstack((
+        generated,
+    ))
 
     return generated, loss_chart, model, model_step
 
