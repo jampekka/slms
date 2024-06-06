@@ -71,15 +71,20 @@ def __(corpus_selections, mo, n_iterations):
                                  full_width=True,
                                  debounce=True,
                                 )
-    return corpus_selector, iter_selector
+    generation_seed_selector = mo.ui.slider(start=1, value=1, stop=10,
+                                            full_width=False, show_value=True,
+                                            label="Variation (random seed)"
+                                           )
+    return corpus_selector, generation_seed_selector, iter_selector
 
 
 @app.cell
-def __(corpus_selector):
+def __(corpus_selector, generation_seed_selector):
     # Define variables derived from controls
     corpus_name = corpus_selector.selected_key
     corpus_text = corpus_selector.value
-    return corpus_name, corpus_text
+    generation_seed = generation_seed_selector.value
+    return corpus_name, corpus_text, generation_seed
 
 
 @app.cell
@@ -256,20 +261,7 @@ def __(mo):
 
 
 @app.cell
-def __(
-    F,
-    U,
-    context_length,
-    corpus_words,
-    n_iterations,
-    nn,
-    torch,
-    vocabulary_size,
-    word_vocab_pos,
-):
-    torch.manual_seed(1337)
-    from copy import deepcopy
-
+def __(F, nn, torch):
     class SimpleNnLm(nn.Module):
         def __init__(self, vocab_size):
             super().__init__()
@@ -288,13 +280,32 @@ def __(
             logits = self(input)
             return F.softmax(logits, dim=-1)
 
-        def generate(self, context):
+        def generate(self, context, seed=None):
+            if seed is not None:
+                torch.manual_seed(seed)
             context = torch.tensor(context)
             while True:
                 yield context
                 logits = self(context)
                 probs = F.softmax(logits, dim=0)
                 context = torch.multinomial(probs, 1)[0]
+    return SimpleNnLm,
+
+
+@app.cell
+def __(
+    SimpleNnLm,
+    U,
+    context_length,
+    corpus_words,
+    n_iterations,
+    nn,
+    torch,
+    vocabulary_size,
+    word_vocab_pos,
+):
+    torch.manual_seed(1337)
+    from copy import deepcopy
 
     corpus_ids = [word_vocab_pos[w] for w in corpus_words]
 
@@ -317,7 +328,6 @@ def __(
         loss.backward()
         optimizer.step()
     return (
-        SimpleNnLm,
         contexts,
         corpus_ids,
         criterion,
@@ -350,56 +360,85 @@ def __(corpus_name, corpus_selector, iter_selector, mo):
 
 @app.cell
 def __(
-    U,
-    alt,
-    corpus_ids,
     iter_selector,
-    itertools,
-    losses,
     mo,
     model_steps,
-    n_iterations,
-    pd,
+    nn_weights_table,
     plot_nn_layer,
-    tokenizer,
     torch,
     vocabulary,
     vocabulary_size,
 ):
-    torch.manual_seed(1337)
+
 
     model_step = iter_selector.value
-
     model = model_steps[model_step]
 
     next_probs = model.next_probabilities(torch.arange(vocabulary_size)).detach()
+    _labels = list(map(repr, vocabulary))
 
+    weights_ui = mo.ui.tabs({
+        "Weight graph": plot_nn_layer(next_probs, _labels, _labels),
+        "Weight table": nn_weights_table(next_probs, _labels, _labels)
+        }
+    )
+    return model, model_step, next_probs, weights_ui
+
+
+@app.cell
+def __(alt, losses, mo, n_iterations, pd, plt):
     _chart = alt.Chart(pd.DataFrame({'Fit iteration': range(n_iterations+1), 'Loss': losses})
                       ).mark_line().encode(
                         x="Fit iteration",
                         y="Loss"
                       )
-    loss_chart = mo.ui.altair_chart(_chart)
+    mo.accordion({
+        "Training loss": mo.ui.altair_chart(_chart)
+    })
 
+    _, _ax = plt.subplots()
+    _ax.plot(range(n_iterations+1), losses)
+    _ax.set_xlabel("Training iteration")
+    _ax.set_ylabel("Loss")
+
+    mo.accordion({
+        "Training progress": _ax
+    })
+
+    return
+
+
+@app.cell
+def __(mo, weights_ui):
+    mo.md(
+        rf"""
+        ### Weights
+        {weights_ui}
+        ### Generated lyrics
+        """
+    )
+    return
+
+
+@app.cell
+def __(
+    U,
+    corpus_ids,
+    generation_seed,
+    generation_seed_selector,
+    itertools,
+    mo,
+    model,
+    tokenizer,
+    vocabulary,
+):
     _max_len = len(corpus_ids)
-    _gen_ids = itertools.islice(model.generate(corpus_ids[0]), _max_len)
+    _gen_ids = itertools.islice(model.generate(corpus_ids[0], seed=generation_seed), _max_len)
     generated = [vocabulary[id] for id in _gen_ids]
     generated = U.tokens_out(generated, tokenizer)
 
-    _con_plot = plot_nn_layer(next_probs)
-
-    mo.accordion({
-        "Connections": _con_plot,
-        "Generated lyrics": generated,
-        },
-        multiple=True
-    )
-
-    #mo.vstack((
-    #    generated,
-    #))
-
-    return generated, loss_chart, model, model_step, next_probs
+    mo.vstack((generated, generation_seed_selector))
+    return generated,
 
 
 if __name__ == "__main__":

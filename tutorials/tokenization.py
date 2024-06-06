@@ -37,9 +37,6 @@ def __(mo):
 
 @app.cell
 def __(U):
-
-
-
     tokenizers = {
         "Word": U.WordTokenizer(),
         "Character": U.CharacterTokenizer(),
@@ -58,7 +55,7 @@ def __(U):
 def __(languages, mo):
     language_selector = mo.ui.dropdown(options=languages, value="English", allow_select_none=False)
 
-    random_seed_slider = mo.ui.slider(start=1, value=1, stop=30, full_width=False, show_value=True, label="Variation (random seed)")
+    random_seed_slider = mo.ui.slider(start=1, value=1, stop=10, full_width=False, show_value=True, label="Variation (random seed)")
     return language_selector, random_seed_slider
 
 
