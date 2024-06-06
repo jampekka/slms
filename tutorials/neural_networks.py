@@ -79,12 +79,17 @@ def __(corpus_selections, mo, n_iterations):
 
 
 @app.cell
-def __(corpus_selector, generation_seed_selector):
+def __(corpus_selector):
     # Define variables derived from controls
     corpus_name = corpus_selector.selected_key
     corpus_text = corpus_selector.value
+    return corpus_name, corpus_text
+
+
+@app.cell
+def __(generation_seed_selector):
     generation_seed = generation_seed_selector.value
-    return corpus_name, corpus_text, generation_seed
+    return generation_seed,
 
 
 @app.cell
@@ -281,8 +286,10 @@ def __(F, nn, torch):
             return F.softmax(logits, dim=-1)
 
         def generate(self, context, seed=None):
+            generator = None
             if seed is not None:
-                torch.manual_seed(seed)
+                generator = torch.Generator()
+                generator.manual_seed(seed)
             context = torch.tensor(context)
             while True:
                 yield context
