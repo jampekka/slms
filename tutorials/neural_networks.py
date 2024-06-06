@@ -393,18 +393,10 @@ def __(
 
 
 @app.cell
-def __(alt, losses, mo, n_iterations, pd, plt):
-    _chart = alt.Chart(pd.DataFrame({'Fit iteration': range(n_iterations+1), 'Loss': losses})
-                      ).mark_line().encode(
-                        x="Fit iteration",
-                        y="Loss"
-                      )
-    mo.accordion({
-        "Training loss": mo.ui.altair_chart(_chart)
-    })
-
+def __(losses, mo, model_step, n_iterations, plt):
     _, _ax = plt.subplots()
-    _ax.plot(range(n_iterations+1), losses)
+    _ax.plot(range(n_iterations+1), losses, color='C0')
+    _ax.plot(model_step, losses[model_step], 'o', color='C0')
     _ax.set_xlabel("Training iteration")
     _ax.set_ylabel("Loss")
 
