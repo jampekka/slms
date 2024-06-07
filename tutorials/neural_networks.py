@@ -119,7 +119,7 @@ def __(corpus_name, mo):
         rf"""
         # Neural network models
 
-        In this notebook, we'll build a very simple **neural network** language model. Conceptually the resulting model is very close to current popular LLMs but the neural network in them is vastly larger (have often billions of parameters vs our few parameters) and have some more constraints in their structure (e.g. in models based on the Transformer architecture).
+        In this notebook, we'll build a very simple **artificial neural network** language model. Conceptually the resulting model is very close to current popular LLMs but the neural network in them is vastly larger (have often billions of parameters vs our few parameters) and have some more constraints in their structure (e.g. in models based on the Transformer architecture).
 
         Let's analyze lyrics of {corpus_name}. We use the simple word tokenizer to keep things more intuitive. The neural network works exactly the same with other tokenizers. See the [Tokenization](?file=tokenization.py) notebook for further info about tokenizers.
         """
@@ -179,6 +179,7 @@ def __(mo):
 
 @app.cell
 def __(
+    U,
     mo,
     next_words_count,
     np,
@@ -233,16 +234,16 @@ def __(
 
         ax.set_xticks([])
 
-        return ax
+        return U.img_box(ax)
 
     def nn_weights_table(connections, left_labels, right_labels):
         # TODO: This doesn't seem to update properly
         df = pd.DataFrame(connections,
-                          columns=left_labels,
+                          columns=right_labels,
                           index=left_labels
         )
         df = df.round(2) # Can't seem to control print precision otherwise
-        return df
+        return U.scroll_box(df, height=U.img_box_height)
         #return mo.ui.table(df, selection=None)
 
     _plot = plot_nn_layer(_connections, vocab_labels, vocab_labels)
@@ -263,9 +264,9 @@ def __(mo):
 
         ## Neural network training
 
-        We "trained" the neural network by explicitly calculating the followers. But typically neural networks are trained using optimization, i.e. we see some examples of previous and next words, and we try to make the neural network to match those examples as well as possible.
+        We "trained" the neural network by explicitly calculating the following word counts. But typically neural networks are trained using optimization, i.e. we see some examples of previous and next words, and we try to make the neural network to match those examples as well as possible.
 
-        We can train our model this way too. Typically the weights are initialized to some random values, and then the optimization algorithm starts to "tweak" them to get the predictions match the data better.
+        We can train our model this way too. Typically the weights are initialized to some random values, and then the optimization algorithm starts to "tweak" them to get the predictions match the data better. The optimization algorithm does this by doing small changes to the weights in each **iteration step**. Neural networks typically use some variation of **gradient descent**, which needs to compute the weight's derivatives (the gradient) using the **backpropagation algorithm**. These methods are not at all specific for language models, but are used for all current artificial neural networks.
         """
     )
     return
@@ -275,7 +276,7 @@ def __(mo):
 def __(F, nn, torch):
     class SimpleNnLm(nn.Module):
         def __init__(self, vocab_size):
-            torch.manual_seed(0)
+            torch.manual_seed(1337)
             super().__init__()
             self.vocab_size = vocab_size
             # This would be faster with nn.Embedding, so we wouldn't have
@@ -335,11 +336,11 @@ def __(
         #    for p in model.parameters():
         #        p *= 0.0
         #        p += 1.0
-        
+
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.AdamW(model.parameters(), lr=1e-1)
         #optimizer = torch.optim.SGD(model.parameters(), lr=1e1)
-        
+
         losses = []
         model_steps = []
         for _i in range(n_iterations + 1):
@@ -412,7 +413,7 @@ def __(
 
 
 @app.cell
-def __(losses, mo, model_step, plt):
+def __(U, losses, mo, model_step, plt):
     def plot_training_process(losses, color='C0', label=None, ax=None):
         if ax is None:
             ax = plt.gca()
@@ -420,7 +421,7 @@ def __(losses, mo, model_step, plt):
         ax.plot(model_step, losses[model_step], 'o', color=color)
         ax.set_xlabel("Training iteration")
         ax.set_ylabel("Loss")
-        return ax
+        return U.img_box(ax)
 
     mo.accordion({
         "Training progress": plot_training_process(losses)
@@ -496,7 +497,7 @@ def __(F, nn, torch):
                 yield context
                 logits = self(context)
                 probs = F.softmax(logits, dim=0)
-                context = torch.multinomial(probs, 1)[0]
+                context = torch.multinomial(probs, 1, generator=generator)[0]
     return SimpleEmbedNnLm,
 
 
@@ -505,7 +506,6 @@ def __(mo):
     #embed_size_selector = mo.ui.slider(1, 10, value=2, label="Embedding size", full_width=True, show_value=True)
     _embed_choices = {str(i): i for i in range(1, 11)}
     embed_size_selector = mo.ui.dropdown(_embed_choices, value='2')
-
     return embed_size_selector,
 
 
@@ -530,7 +530,6 @@ def __(model_step, model_steps_e):
 def __(
     corpus_selector,
     corpus_words,
-    embed_size,
     embed_size_selector,
     mo,
     vocabulary_size,
@@ -539,15 +538,11 @@ def __(
         rf"""
         ## Embeddings
 
-        Currently our neural network is actually rather large.
+        Currently our neural network is actually rather large -- relative to the very small training data.
 
         In {corpus_selector} we have `{vocabulary_size}` different tokens (words). To predict from each word to each word, we need `{vocabulary_size}x{vocabulary_size} = {vocabulary_size*vocabulary_size}` weights in our neural network. Given that we have a training set of only {len(corpus_words)} tokens, we are sure to overfit the data, i.e. just memorize the lyrics that we have.
 
-        But we can quite easily make it smaller by adding a smaller **hidden layer** often called an **embedding layer**. Let's try an embedding layer size {embed_size_selector}. 
-
-        This means we will first have `{vocabulary_size}x{embed_size}` input weights and the same amount of output weights. In total we'll have `{vocabulary_size}x{embed_size} + {embed_size}x{vocabulary_size} = {2*embed_size*vocabulary_size}` weights. That's about {round(2*embed_size*vocabulary_size/vocabulary_size**2*100)}% of the original weights!
-
-        Try out the different lyrics and different embedding sizes. Typically for more complicated lyrics we need more embedding layers to fit the data.
+        But we can quite easily make it smaller by adding a smaller **hidden layer** often called an **embedding layer**. Let's try an embedding layer size {embed_size_selector}.
         """
     )
     return
@@ -560,26 +555,19 @@ def __(iter_selector):
 
 
 @app.cell
-def __(losses, losses_e, mo, plot_training_process, plt):
-    _, _ax = plt.subplots()
-
-    plot_training_process(losses, label="No embedding", color='C0', ax=_ax)
-    plot_training_process(losses_e, label="With embedding", color='C1', ax=_ax)
-    _ax.legend()
-    mo.accordion({
-        "Training progress": _ax
-    })
-    return
-
-
-@app.cell
-def __(embed_size, mo, vocabulary_size):
-    mo.md(rf"Now we have weights from the original `{vocabulary_size}` words to the `{embed_size}` hidden units. Note that the weights can be now also negative. Positive weights are plotted in blue and negative ones in red.")
-    return
-
-
-@app.cell
-def __(F, model_e, np, plt, vocab_labels):
+def __(
+    F,
+    embed_size,
+    losses,
+    losses_e,
+    mo,
+    model_e,
+    nn_weights_table,
+    np,
+    plot_training_process,
+    plt,
+    vocab_labels,
+):
     def plot_nn(layers, left_labels, right_labels):
         # TODO: Line colors
         from matplotlib.collections import LineCollection
@@ -608,23 +596,11 @@ def __(F, model_e, np, plt, vocab_labels):
                     alpha = np.minimum(1, np.abs(weight))*0.8
                     alphas.append(alpha)
                     colors.append(color)
-            
-            """
-            nx, ny = connections.shape
-            #xs, ys = np.indices((nx, ny), sparse=True)
-            xs, ys = map(np.ravel, np.mgrid[0:nx, 0:ny])
-            weights = connections[xs, ys]
 
-            token_positions = np.vstack((xs, ys)).T
-            n = len(token_positions)
-            side_positions = np.vstack((np.repeat(leftpos, n), np.repeat(rightpos, n))).T
-            segs = np.dstack((side_positions, token_positions))
-            alpha = np.minimum(1, np.abs(weights))*0.8
-            """
             lc = LineCollection(segs, alpha=alphas, color=colors)
-            
+
             ax.add_collection(lc)
-            
+
         for a in [ax, tax]:
             ticks = (np.arange(ny) + 0.5)/ny - 0.5
             a.set_yticks(ticks=ticks, labels=left_labels)
@@ -640,11 +616,33 @@ def __(F, model_e, np, plt, vocab_labels):
     def _mangle_weights(w):
         return F.tanh(w*0.1).detach()
 
-    plot_nn((
+    _weight_chart = plot_nn((
         _mangle_weights(model_e.embedder.weight),
         _mangle_weights(model_e.mlp.weight).T
-           ), vocab_labels, vocab_labels)
-            
+        ),
+        vocab_labels, vocab_labels
+    )
+
+    _emb_weights = model_e.embedder.weight.detach()
+    _proj_weights = model_e.mlp.weight.detach().T
+
+    _emb_labels = [f"Emb dim {i+1}" for i in range(embed_size)]
+
+    _, _ax = plt.subplots()
+
+    plot_training_process(losses, label="No embedding", color='C0', ax=_ax)
+    plot_training_process(losses_e, label="With embedding", color='C1', ax=_ax)
+    _ax.legend()
+    #mo.accordion({
+    #    "Training progress": _ax
+    #})
+
+    mo.ui.tabs({
+        "Weight chart": _weight_chart,
+        "Embedding weights": nn_weights_table(_emb_weights, vocab_labels, _emb_labels),
+        "Projection weights": nn_weights_table(_proj_weights, _emb_labels, vocab_labels),
+        "Training progress": _ax
+    })
     return plot_nn,
 
 
@@ -670,14 +668,34 @@ def __(
 
 
 @app.cell
-def __(corpus_selector, embed_size_selector, mo):
+def __(embed_size, embed_size_selector, mo, vocabulary_size):
     mo.md(
         rf"""
-        For each word we can compute its embedding by computing what embedding value it ends up to.
+        Try out the different lyrics and different embedding sizes. Typically for more complicated lyrics we need more embedding layers to fit the data.
 
-        As embeddings are numbers, they can be also plotted on x-y axis. If the dimension is more than `2`, we compute Principal Axis Decomposition and use the first two component. Below we plot the 2 dimensional projection of the {embed_size_selector} dimensional embeddings for {corpus_selector}.
+        Now we have weights from the original `{vocabulary_size}` words to the {embed_size_selector} hidden units. Note that the weights can be now also negative. Positive weights are plotted in blue and negative ones in red.
+
+        Embedding size {embed_size_selector} means we will first have `{vocabulary_size}*{embed_size}` input weights and the same amount of output weights. In total we'll have `{vocabulary_size}*{embed_size} + {embed_size}*{vocabulary_size} = {2*embed_size*vocabulary_size}` weights. That's about {round(2*embed_size*vocabulary_size/vocabulary_size**2*100)}% of the original weights!
+
+        The weights from the words to the embedding layer are typically called **embedding weights** and the weights from the embeddings back to the words are known as **projection weights**.
+        """
+    )
+    return
+
+
+@app.cell
+def __(corpus_selector, embed_size_selector, iter_selector, mo):
+    mo.md(
+        rf"""
+        ### Embedding space
+
+        For each word we can compute its embedding by computing what embedding value it ends up to. As embeddings are numbers, they can be also plotted on x-y axis. If the dimension is more than `2`, we compute [Principal component analysis](https://en.wikipedia.org/wiki/Principal_component_analysis) and use the first two component.
+
+        Below we plot the 2 dimensional projection of the {embed_size_selector} dimensional embeddings for {corpus_selector}.
 
         With larger datasets and networks the embedding values tend to exhibit some semantic-looking behavior. In general, words that occur in similar context tend to have similar embedding values.
+
+        {iter_selector}
         """
     )
     return
@@ -716,7 +734,11 @@ def __(mo):
 
         In these examples we used only context length of `1` and a neural network with just one hidden layer. The purpose was to give a conceptual understanding of neural network models, and conceptually this simple one has most of the components of large language models.
 
-        If you want to study the more complicated models, I can recommend the video series by [3blue1brown](https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi) for more conceptual understanding, and if you want to understand how the models are programmed, see [Andrew Karpathy's video series](https://www.youtube.com/watch?v=VMj-3S1tku0&list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ).
+        The most immediate improvement to the model would be to use a longer context length. This would mean that we would just have weights for each word of the context to the word's embeddings, and these embeddings would have their own projection weights to the final prediction. Note that embedding weights would still always be same for each word regardless of its position in the context.
+
+        In current large language models, the handling of word position and its effects on the output is done a bit differently. This is done with what's called **self attention**, and it's the "secret sauce" of the **Transformer architecture**. The networks are larger and their architectures (a bit) more complicated, but conceptually they are still very similar neural networks that we used here. It's matrix multiplication all the way down.
+
+        If you want to study these more complicated models, I can recommend the video series by [3blue1brown](https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi) for more conceptual understanding, and if you want to understand how the models are programmed, see [Andrew Karpathy's video series](https://www.youtube.com/watch?v=VMj-3S1tku0&list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ).
         """
     )
     return

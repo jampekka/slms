@@ -3,15 +3,44 @@ import marimo as mo
 from pprint import pformat
 from collections import defaultdict, Counter
 import random
+import matplotlib.pyplot as plt
+import matplotlib
+plt.rcParams["figure.figsize"] = (16, 9)
+plt.rcParams["figure.dpi"] = 100
 
-_pre_box_height = "10em";
-_font_size = "12px";
+import pandas as pd
+
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+
+font = {'size': 22}
+
+matplotlib.rc('font', **font)
+
+_pre_box_height = "10em"
+_font_size = "12px"
+img_box_height = "20em"
+
 def pre_box(text):
     return mo.Html(f"""
 <pre class="pre_out_box" style="overflow: auto; height: {_pre_box_height}; font-size: {_font_size};">
 {text}
-
 </pre>""")
+
+def img_box(content, height=img_box_height):
+    return mo.Html(f"""
+    <div class="imgbox" style="height: {height}">
+    {mo.as_html(content)}
+    </div>
+    """)
+
+def scroll_box(content, height=_pre_box_height):
+    return mo.Html(f"""
+    <div style="height: {height}; overflow: auto">
+        {mo.as_html(content)}    
+    </div>
+    
+    """)
 
 def python_out(code):
     code = pformat(code, compact=True)
