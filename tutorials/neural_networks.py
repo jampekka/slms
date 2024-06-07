@@ -8,17 +8,15 @@ app = marimo.App()
 def __():
     import marimo as mo
     import utils as U
-    import altair as alt
     import matplotlib.pyplot as plt
     import pandas as pd
-    import polars as pl
     import numpy as np
     import torch
     from torch import nn
     import torch.nn.functional as F
 
     np.set_printoptions(precision=2)
-    return F, U, alt, mo, nn, np, pd, pl, plt, torch
+    return F, U, mo, nn, np, pd, plt, torch
 
 
 @app.cell
