@@ -32,7 +32,7 @@ def __():
      Happy birthday to you 
     """
 
-    _blowin_text = """
+    _blowin_text_full = """
      Yes, and how many roads must a man walk down, before you call him a man? 
      And how many seas must a white dove sail, before she sleeps in the sand? 
      Yes, and how many times must the cannonballs fly, before they're forever banned? 
@@ -54,7 +54,8 @@ def __():
 
     corpus_selections = {
         "Happy Birthday": _happy_birthday_text,
-        "Blowin' in the wind": _blowin_text
+        "Blowin' in the wind": _blowin_text,
+        "Blowin' (all verses)": _blowin_text_full
     }
 
     n_iterations = 100
@@ -331,14 +332,25 @@ def __(
 
     def train_model(model):
         torch.manual_seed(0)
-        criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.AdamW(model.parameters(), lr=5e-2)
 
+        #with torch.no_grad():
+        #    for p in model.parameters():
+        #        p *= 0.0
+        #        p += 1.0
+        
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.AdamW(model.parameters(), lr=1e-1)
+        #optimizer = torch.optim.SGD(model.parameters(), lr=1e1)
+        
         losses = []
         model_steps = []
         for _i in range(n_iterations + 1):
             predictions = model(contexts).squeeze(1)
             loss = criterion(predictions, targets.view(-1))
+            # Add small L1 regularization to the weights to
+            # get more sparse ones for nicer visualization.
+            for p in model.parameters():
+                loss += torch.norm(p.flatten()*1e-3, 1)
             model_steps.append(deepcopy(model))
             losses.append(float(loss))
             optimizer.zero_grad()
@@ -536,6 +548,8 @@ def __(
         But we can quite easily make it smaller by adding a smaller **hidden layer** often called an **embedding layer**. Let's try an embedding layer size {embed_size_selector}. 
 
         This means we will first have `{vocabulary_size}x{embed_size}` input weights and the same amount of output weights. In total we'll have `{vocabulary_size}x{embed_size} + {embed_size}x{vocabulary_size} = {2*embed_size*vocabulary_size}` weights. That's about {round(2*embed_size*vocabulary_size/vocabulary_size**2*100)}% of the original weights!
+
+        Try out the different lyrics and different embedding sizes. Typically for more complicated lyrics we need more embedding layers to fit the data.
         """
     )
     return
@@ -561,8 +575,15 @@ def __(losses, losses_e, mo, plot_training_process, plt):
 
 
 @app.cell
+def __(embed_size, mo, vocabulary_size):
+    mo.md(rf"Now we have weights from the original `{vocabulary_size}` words to the `{embed_size}` hidden units. Note that the weights can be now also negative. Positive weights are plotted in blue and negative ones in red.")
+    return
+
+
+@app.cell
 def __(F, model_e, np, plt, vocab_labels):
     def plot_nn(layers, left_labels, right_labels):
+        # TODO: Line colors
         from matplotlib.collections import LineCollection
         #froms, tos = np.nonzero(connections)
         #w = connections[x, y]
@@ -573,6 +594,7 @@ def __(F, model_e, np, plt, vocab_labels):
             rightpos = leftpos + 1
             segs = []
             alphas = []
+            colors = []
 
             nx, ny = connections.shape
 
@@ -583,9 +605,11 @@ def __(F, model_e, np, plt, vocab_labels):
                     yc = (y + 0.5)/ny - 0.5
                     seg = (leftpos, xc), (rightpos, yc)
                     segs.append(seg)
-                    
+
+                    color = ['blue', 'red'][weight < 0]
                     alpha = np.minimum(1, np.abs(weight))*0.8
                     alphas.append(alpha)
+                    colors.append(color)
             
             """
             nx, ny = connections.shape
@@ -599,7 +623,7 @@ def __(F, model_e, np, plt, vocab_labels):
             segs = np.dstack((side_positions, token_positions))
             alpha = np.minimum(1, np.abs(weights))*0.8
             """
-            lc = LineCollection(segs, color='black', alpha=alphas)
+            lc = LineCollection(segs, alpha=alphas, color=colors)
             
             ax.add_collection(lc)
             
@@ -616,7 +640,7 @@ def __(F, model_e, np, plt, vocab_labels):
         return ax
 
     def _mangle_weights(w):
-        return F.softmax(w.abs(), dim=-1).detach()
+        return F.tanh(w*0.1).detach()
 
     plot_nn((
         _mangle_weights(model_e.embedder.weight),
@@ -644,6 +668,59 @@ def __(
     _generated = U.tokens_out(_generated, tokenizer)
 
     mo.vstack((_generated, generation_seed_selector))
+    return
+
+
+@app.cell
+def __(corpus_selector, embed_size_selector, mo):
+    mo.md(
+        rf"""
+        For each word we can compute its embedding by computing what embedding value it ends up to.
+
+        As embeddings are numbers, they can be also plotted on x-y axis. If the dimension is more than `2`, we compute Principal Axis Decomposition and use the first two component. Below we plot the 2 dimensional projection of the {embed_size_selector} dimensional embeddings for {corpus_selector}.
+
+        With larger datasets and networks the embedding values tend to exhibit some semantic-looking behavior. In general, words that occur in similar context tend to have similar embedding values.
+        """
+    )
+    return
+
+
+@app.cell
+def __(model_e, np, plt, torch, vocab_labels):
+    def plot_embeddings(weights):
+        torch.manual_seed(0)
+
+        #print(weights.shape)
+        if weights.shape[1] == 1:
+            comps = np.vstack((
+                np.zeros(weights.shape[0]),
+                weights[:,0])).T
+        elif weights.shape[1] == 2:
+            comps = weights
+        else:
+            U, S, V = torch.pca_lowrank(weights)
+            comps = (weights@V[:,:2]).detach()
+        plt.plot(*comps.T, 'k.')
+        for i, (x, y) in enumerate(comps):
+            plt.text(x, y, vocab_labels[i])
+        plt.xlabel("Embedding component 1")
+        plt.ylabel("Embedding component 2")
+        return plt.gca()
+    plot_embeddings(model_e.embedder.weight.detach())
+    return plot_embeddings,
+
+
+@app.cell
+def __(mo):
+    mo.md(
+        rf"""
+        ## Going deeper
+
+        In these examples we used only context length of `1` and a neural network with just one hidden layer. The purpose was to give a conceptual understanding of neural network models, and conceptually this simple one has most of the components of large language models.
+
+        If you want to study the more complicated models, I can recommend the video series by [3blue1brown](https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi) for more conceptual understanding, and if you want to understand how the models are programmed, see [Andrew Karpathy's video series](https://www.youtube.com/watch?v=VMj-3S1tku0&list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ).
+        """
+    )
     return
 
 
