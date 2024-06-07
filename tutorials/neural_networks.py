@@ -16,6 +16,7 @@ def __():
     import torch.nn.functional as F
 
     np.set_printoptions(precision=2)
+    U.init_output
     return F, U, mo, nn, np, pd, plt, torch
 
 
