@@ -105,24 +105,12 @@ def __(tokenizer_tabs, tokenizers):
 
 
 @app.cell
-def __(
-    U,
-    context_length_slider,
-    language_selector,
-    tokenizer,
-    tokenizer_type,
-):
+def __(U, context_length_slider, language_selector, tokenizer):
     corpus_text = language_selector.value
     context_length = context_length_slider.value
     corpus_tokens = tokenizer(corpus_text)
-    print(tokenizer, tokenizer_type, corpus_tokens)
     vocabulary = U.corpus_to_vocabulary(corpus_tokens)
     return context_length, corpus_text, corpus_tokens, vocabulary
-
-
-@app.cell
-def __():
-    return
 
 
 @app.cell

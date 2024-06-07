@@ -56,7 +56,7 @@ def __():
         "Blowin' (all verses)": _blowin_text_full
     }
 
-    n_iterations = 60
+    n_iterations = 100
     context_length = 1
     return context_length, corpus_selections, n_iterations
 
@@ -65,7 +65,7 @@ def __():
 def __(corpus_selections, mo, n_iterations):
     # Define controls
     corpus_selector = mo.ui.dropdown(corpus_selections, value="Happy Birthday")
-    iter_selector = mo.ui.slider(0, n_iterations, value=20,
+    iter_selector = mo.ui.slider(0, n_iterations, value=30,
                                  show_value=True,
                                  label="Training iteration",
                                  full_width=True,
@@ -246,14 +246,21 @@ def __(
         return U.scroll_box(df, height=U.img_box_height)
         #return mo.ui.table(df, selection=None)
 
-    _plot = plot_nn_layer(_connections, vocab_labels, vocab_labels)
-    _table = nn_weights_table(_connections, vocab_labels, vocab_labels)
+    freq_weight_plot = plot_nn_layer(_connections, vocab_labels, vocab_labels)
+    freq_weight_table = nn_weights_table(_connections, vocab_labels, vocab_labels)
     mo.ui.tabs({
-        "Weight graph": _plot,
-        "Weight table": _table
+        "Weight graph": freq_weight_plot,
+        "Weight table": freq_weight_table
         }
     )
-    return connections, itertools, nn_weights_table, plot_nn_layer
+    return (
+        connections,
+        freq_weight_plot,
+        freq_weight_table,
+        itertools,
+        nn_weights_table,
+        plot_nn_layer,
+    )
 
 
 @app.cell
@@ -375,11 +382,9 @@ def __(
 def __(corpus_name, corpus_selector, iter_selector, mo):
     mo.md(
         rf"""
-        Below we can see the results of learning from the lyrics of {corpus_name}. You can change how many iterations the model was trained with. With zero iterations the model should make no sense, but with more iterations it starts to get a bit better, especially with increased context length! With enough iterations, it should match the simple frequency table model we started with.
+        Below we can see the results of learning from the lyrics of {corpus_name}. You can change how many iterations the model was trained with. With zero iterations the model should make no sense, but with more iterations it starts to get a bit better, especially with increased context length! With enough iterations, it should start to the simple frequency table model we started with. Compare the models with the different tabs.
 
         The Happy Birthday lyrics may not be that interesting, so try others: {corpus_selector}!
-
-        Note that the whole document changes to the lyrics you select, so scroll back to the beginning too!
 
         {iter_selector}
         """
@@ -389,11 +394,15 @@ def __(corpus_name, corpus_selector, iter_selector, mo):
 
 @app.cell
 def __(
+    U,
+    freq_weight_plot,
     iter_selector,
+    losses,
     mo,
     model_steps,
     nn_weights_table,
     plot_nn_layer,
+    plt,
     torch,
     vocabulary,
     vocabulary_size,
@@ -401,32 +410,28 @@ def __(
     model_step = iter_selector.value
     model = model_steps[model_step]
 
-    next_probs = model.next_probabilities(torch.arange(vocabulary_size)).detach()
-    _labels = list(map(repr, vocabulary))
-
-    weights_ui = mo.ui.tabs({
-        "Weight graph": plot_nn_layer(next_probs, _labels, _labels),
-        "Weight table": nn_weights_table(next_probs, _labels, _labels)
-        }
-    )
-    return model, model_step, next_probs, weights_ui
-
-
-@app.cell
-def __(U, losses, mo, model_step, plt):
     def plot_training_process(losses, color='C0', label=None, ax=None):
         if ax is None:
-            ax = plt.gca()
+            fig, ax = plt.subplots()
         ax.plot(range(len(losses)), losses, color=color, label=label)
         ax.plot(model_step, losses[model_step], 'o', color=color)
         ax.set_xlabel("Training iteration")
         ax.set_ylabel("Loss")
         return U.img_box(ax)
 
-    mo.accordion({
+
+    next_probs = model.next_probabilities(torch.arange(vocabulary_size)).detach()
+    _labels = list(map(repr, vocabulary))
+
+    weights_ui = mo.ui.tabs({
+        "Weight graph": plot_nn_layer(next_probs, _labels, _labels),
+        "Basic model graph": freq_weight_plot,
+        "Weight table": nn_weights_table(next_probs, _labels, _labels),
+
         "Training progress": plot_training_process(losses)
-    })
-    return plot_training_process,
+        }
+    )
+    return model, model_step, next_probs, plot_training_process, weights_ui
 
 
 @app.cell

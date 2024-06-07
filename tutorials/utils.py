@@ -23,8 +23,7 @@ img_box_height = "20em"
 
 def pre_box(text):
     return mo.Html(f"""
-<pre class="pre_out_box" style="overflow: auto; height: {_pre_box_height}; font-size: {_font_size};">
-{text}
+<pre class="pre_out_box" style="overflow: auto; height: {_pre_box_height}; font-size: {_font_size};">{text}
 </pre>""")
 
 def img_box(content, height=img_box_height):
