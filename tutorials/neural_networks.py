@@ -66,7 +66,7 @@ def __():
 def __(corpus_selections, mo, n_iterations):
     # Define controls
     corpus_selector = mo.ui.dropdown(corpus_selections, value="Happy Birthday")
-    iter_selector = mo.ui.slider(0, n_iterations, value=30,
+    iter_selector = mo.ui.slider(0, n_iterations, value=10,
                                  show_value=True,
                                  label="Training iteration",
                                  full_width=True,

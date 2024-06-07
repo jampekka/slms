@@ -19,7 +19,7 @@ matplotlib.rc('font', **font)
 
 _pre_box_height = "10em"
 _font_size = "12px"
-img_box_height = "20em"
+img_box_height = "22em"
 
 def pre_box(text):
     return mo.Html(f"""
@@ -28,6 +28,7 @@ def pre_box(text):
 
 def img_box(content, height=img_box_height):
     return mo.Html(f"""
+    <style>.img_box img {{width: 100%; height: 100%; object-fit: contain;}}</style>
     <div class="img_box" style="height: {height}">
     {mo.as_html(content)}
     </div>
@@ -101,14 +102,13 @@ init_output = mo.Html(f"""
         text-align: center;
     }}
 
-    .img_box > img {{
+    .img_box img {{
         height: 100%;
         object-fit: contain;
     }}
     </style>
     """)
-init_output = None
-
+    
 def graph_out(svg):
     return mo.Html(f"""
         <div style="overflow: auto; max-height: 32em;">
