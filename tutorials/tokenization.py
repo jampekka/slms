@@ -204,7 +204,7 @@ def __(mo):
         ---
         In the next notebook, we'll learn basics of neural networks and how they can be used to create more flexible and scalable language models.
 
-        [Continue to Neural Networks >](?file=tokenization.py)
+        [Continue to Neural Networks >](?file=neural_networks.py)
         """
     )
     return

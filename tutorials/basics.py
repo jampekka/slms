@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.6.8"
+__generated_with = "0.6.14"
 app = marimo.App(app_title="SLMs basics")
 
 
@@ -20,6 +20,10 @@ def __(mo):
     mo.md(
         r"""
         # Small language models
+
+        This is a series of notebooks that go over some simple language models. The series has this notebook [Basics](?file=basics.py), followed by [Tokenization](?file=tokenization.py) and [Neural Networks](?file=neural_networks.py). I recommend going them in order.
+
+        All the notebooks are interactive, and when you change values from the different UI components, the whole notebook will update to reflect the new values.
 
         ## Happy birthday
         ---

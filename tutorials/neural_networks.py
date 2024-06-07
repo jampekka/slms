@@ -58,7 +58,7 @@ def __():
         "Blowin' (all verses)": _blowin_text_full
     }
 
-    n_iterations = 100
+    n_iterations = 60
     context_length = 1
     return context_length, corpus_selections, n_iterations
 
@@ -123,7 +123,7 @@ def __(corpus_name, mo):
 
         In this notebook, we'll build a very simple **neural network** language model. Conceptually the resulting model is very close to current popular LLMs but the neural network in them is vastly larger (have often billions of parameters vs our few parameters) and have some more constraints in their structure (e.g. in models based on the Transformer architecture).
 
-        Let's analyze lyrics of {corpus_name}. We use the simple word tokenizer to keep things more intuitive. The neural network works exactly the same with other tokenizers.
+        Let's analyze lyrics of {corpus_name}. We use the simple word tokenizer to keep things more intuitive. The neural network works exactly the same with other tokenizers. See the [Tokenization](?file=tokenization.py) notebook for further info about tokenizers.
         """
     )
     return
@@ -146,7 +146,7 @@ def __(mo):
         rf"""
         ## The basic model as a neural network
 
-        And let's do the simple context length one model, where we predict the next word just based on the current word:
+        And let's do the simple context length one model, where we predict the next word just based on the current word like we did in [Basics](?file=basics.py).
         """
     )
     return

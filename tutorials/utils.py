@@ -14,11 +14,15 @@ def pre_box(text):
 </pre>""")
 
 def python_out(code):
+    code = pformat(code, compact=True)
     return mo.Html(f"""
-<pre class="python_out_box" style="overflow: auto; height: {_pre_box_height}; font-size: {_font_size};">
-{pformat(code, sort_dicts=False, compact=True)}
-
-</pre>""")
+        <div style="height: {_pre_box_height}; overflow: auto">
+        {mo.ui.code_editor(code, disabled=True)}
+        </div>
+        """)
+    #return mo.Html(f"""
+#<pre class="python_out_box" style="overflow: auto; height: {_pre_box_height}; font-size: {_font_size};">
+#{pformat(code, sort_dicts=False, compact=True)}</pre>""")
 
 def tokens_out(tokens, tokenizer):
     out = ""
@@ -245,3 +249,5 @@ class SubwordTokenizer(Tokenizer):
         # Using strings instead of ids to avoid confusion
         token_ids = self._tok(s)['input_ids']
         return [self._tok.decode([id]) for id in token_ids]
+
+
