@@ -114,14 +114,14 @@ def __(U, corpus_text):
 
 
 @app.cell
-def __(corpus_name, mo):
+def __(corpus_selector, mo):
     mo.md(
         rf"""
         # Neural network models
 
         In this notebook, we'll build a very simple **artificial neural network** language model. Conceptually the resulting model is very close to current popular LLMs but the neural network in them is vastly larger (have often billions of parameters vs our few parameters) and have some more constraints in their structure (e.g. in models based on the Transformer architecture).
 
-        Let's analyze lyrics of {corpus_name}. We use the simple word tokenizer to keep things more intuitive. The neural network works exactly the same with other tokenizers. See the [Tokenization](?file=tokenization.py) notebook for further info about tokenizers.
+        Let's analyze lyrics of {corpus_selector}. We use the simple word tokenizer to keep things more intuitive. The neural network works exactly the same with other tokenizers. See the [Tokenization](?file=tokenization.py) notebook for further info about tokenizers.
         """
     )
     return
@@ -562,6 +562,7 @@ def __(iter_selector):
 @app.cell
 def __(
     F,
+    U,
     embed_size,
     losses,
     losses_e,
@@ -616,7 +617,7 @@ def __(
 
         ax.set_xticks([])
 
-        return ax
+        return U.img_box(ax)
 
     def _mangle_weights(w):
         return F.tanh(w*0.1).detach()

@@ -28,7 +28,7 @@ def pre_box(text):
 
 def img_box(content, height=img_box_height):
     return mo.Html(f"""
-    <div class="imgbox" style="height: {height}">
+    <div class="img_box" style="height: {height}">
     {mo.as_html(content)}
     </div>
     """)
@@ -95,6 +95,15 @@ init_output = mo.Html(f"""
         overflow: auto !important;
         height: {_pre_box_height};
         font-size: 12px;
+    }}
+
+    .img_box {{
+        text-align: center;
+    }}
+
+    .img_box > img {{
+        height: 100%;
+        object-fit: contain;
     }}
     </style>
     """)
